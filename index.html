@@ -1,0 +1,3092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>German Bridge Multiplayer</title>
+  <!-- PeerJS for zero-backend WebRTC private rooms -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --felt-dark: #062b1b;
+      --felt-light: #0d4a30;
+      --felt-border: #1b6d49;
+      --gold: #f59e0b;
+      --gold-light: #fbbf24;
+      --gold-glow: rgba(245, 158, 11, 0.4);
+      --bg-dark: #090e17;
+      --panel-bg: #111827;
+      --panel-border: #374151;
+      --card-white: #ffffff;
+      --card-red: #dc2626;
+      --card-black: #1e293b;
+      --accent-cyan: #38bdf8;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    input, textarea {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: #f8fafc;
+      font-family: var(--font-stack);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      overflow-x: hidden;
+    }
+
+    .app-viewport {
+      width: 100%;
+      max-width: 480px;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background: radial-gradient(circle at 50% 40%, var(--felt-light) 0%, var(--felt-dark) 100%);
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
+      border-left: 1px solid rgba(255, 255, 255, 0.05);
+      border-right: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    /* Lobby Screen */
+    .lobby-wrapper {
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      min-height: 100vh;
+      min-height: 100dvh;
+      justify-content: center;
+    }
+
+    .brand-header {
+      text-align: center;
+    }
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--gold-light);
+      border: 1px solid var(--gold);
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    .brand-title {
+      font-size: 1.85rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: #fff;
+    }
+    .brand-sub {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      margin-top: 0.2rem;
+    }
+
+    .card-panel {
+      background: rgba(17, 24, 39, 0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+
+    .tab-switch {
+      display: flex;
+      background: #1f2937;
+      border-radius: 10px;
+      padding: 3px;
+      gap: 3px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 0.55rem;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-weight: 700;
+      font-size: 0.85rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab-btn.active {
+      background: #374151;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .form-label {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .input-field {
+      width: 100%;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 0.7rem 0.85rem;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .input-field:focus {
+      border-color: var(--gold);
+    }
+
+    .count-selector {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    .count-btn {
+      padding: 0.6rem 0;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      color: #e5e7eb;
+      font-weight: 800;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .count-btn.active {
+      border-color: var(--gold);
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--gold-light);
+    }
+
+    .btn-cta {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      background: var(--gold);
+      color: #0f172a;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: transform 0.1s, background-color 0.15s;
+    }
+    .btn-cta:active {
+      transform: scale(0.98);
+      background: var(--gold-light);
+    }
+    .btn-cta:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    /* Lobby Waiting Room */
+    .room-code-box {
+      background: rgba(0, 0, 0, 0.4);
+      border: 2px dashed var(--gold);
+      border-radius: 12px;
+      padding: 0.9rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .code-digits {
+      font-size: 1.8rem;
+      font-weight: 900;
+      letter-spacing: 0.25em;
+      color: var(--gold-light);
+      font-family: monospace;
+    }
+    .share-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 0.25rem;
+    }
+    .btn-mini {
+      background: #1f2937;
+      border: 1px solid #374151;
+      color: #e5e7eb;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .btn-mini:hover, .btn-mini:active {
+      background: #374151;
+    }
+
+    .player-roster {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .roster-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1f2937;
+      border: 1px solid #374151;
+      padding: 0.6rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .roster-item.is-host {
+      border-color: rgba(245, 158, 11, 0.5);
+    }
+    .roster-pill {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--gold-light);
+    }
+    /* In-Game Header */
+    .game-top-bar {
+      background: rgba(9, 14, 23, 0.95);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.45rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      z-index: 30;
+    }
+    .top-meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .room-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--gold-light);
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .hand-pill {
+      font-size: 0.8rem;
+      font-weight: 900;
+      color: #fff;
+    }
+
+    .leaderboard-strip {
+      display: flex;
+      gap: 0.35rem;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .leaderboard-strip::-webkit-scrollbar { display: none; }
+    .leader-chip {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.7rem;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: border-color 0.2s;
+    }
+    .leader-chip.turn-active {
+      border-color: var(--gold-light);
+      background: #283548;
+      box-shadow: 0 0 8px var(--gold-glow);
+    }
+    .leader-chip.is-you {
+      border-left: 3px solid var(--accent-cyan);
+    }
+    .chip-score {
+      font-weight: 900;
+      color: #fff;
+    }
+
+    /* Opponents Table Seats */
+    .opponents-section {
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-start;
+      gap: 0.4rem;
+      padding: 0.6rem 0.5rem 0.2rem 0.5rem;
+      z-index: 10;
+    }
+    .opponent-pod {
+      background: rgba(10, 20, 16, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 0.4rem 0.55rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+      min-width: 82px;
+      transition: all 0.2s ease;
+    }
+    .opponent-pod.turn-active {
+      border-color: var(--gold-light);
+      background: rgba(20, 45, 30, 0.95);
+      box-shadow: 0 0 12px var(--gold-glow);
+    }
+    .opp-name {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: #f1f5f9;
+      max-width: 85px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .opp-meta {
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: var(--gold-light);
+      background: rgba(0, 0, 0, 0.4);
+      padding: 0.1rem 0.4rem;
+      border-radius: 999px;
+    }
+    .card-fan-count {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 0.65rem;
+      color: #94a3b8;
+    }
+    /* Center Play Felt */
+    .table-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 0.5rem;
+    }
+
+    .trump-dock {
+      position: absolute;
+      top: 0.4rem;
+      left: 0.6rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.15rem;
+      z-index: 5;
+    }
+    .trump-label {
+      font-size: 0.6rem;
+      font-weight: 900;
+      color: var(--gold-light);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .trick-arena {
+      width: 220px;
+      height: auto;
+      flex: 0 1 190px;
+      min-height: 120px;
+      border: 2px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .trick-slot {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .trick-slot.pos-bottom { bottom: 6px; }
+    .trick-slot.pos-top { top: 6px; }
+    .trick-slot.pos-left { left: 6px; }
+    .trick-slot.pos-right { right: 6px; }
+
+    .slot-player-tag {
+      font-size: 0.62rem;
+      font-weight: 800;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .trick-toast {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--gold);
+      color: #fff;
+      padding: 0.45rem 1rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7);
+      z-index: 25;
+      text-align: center;
+      pointer-events: none;
+      animation: popIn 0.2s ease-out;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.7); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .guide-banner {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #e2e8f0;
+      min-height: 1.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 0 0.5rem;
+    }
+    /* Card Graphics (SVG/CSS) */
+    .playing-card {
+      width: 48px;
+      height: 70px;
+      background: var(--card-white);
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 3px 4px;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s;
+      flex-shrink: 0;
+    }
+    .playing-card.card-mini {
+      width: 38px;
+      height: 56px;
+      padding: 2px 3px;
+    }
+    .playing-card.card-hand {
+      width: var(--card-w, 50px);
+      height: var(--card-h, 76px);
+      padding: 3px;
+    }
+
+    .playing-card.is-red { color: var(--card-red); }
+    .playing-card.is-black { color: var(--card-black); }
+
+    .card-top, .card-bottom {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1;
+    }
+    .card-bottom {
+      transform: rotate(180deg);
+    }
+    .card-rank {
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: -0.06em;
+    }
+    .card-mini .card-rank { font-size: 0.6rem; }
+    .card-mini .card-suit { font-size: 0.5rem; }
+    .card-mini .card-mid { font-size: 0.8rem; }
+    .card-hand .card-rank { font-size: calc(var(--card-w, 50px) * 0.27); }
+    .card-suit {
+      font-size: 0.6rem;
+      margin-top: 1px;
+    }
+    .card-hand .card-suit { font-size: calc(var(--card-w, 50px) * 0.18); }
+    .card-mid {
+      align-self: center;
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .card-hand .card-mid { font-size: calc(var(--card-w, 50px) * 0.36); }
+
+    /* Card Back */
+    .playing-card.card-back {
+      background: #1e3a8a;
+      border: 2px solid #ffffff;
+      padding: 3px;
+    }
+    .card-back-grid {
+      width: 100%;
+      height: 100%;
+      border-radius: 3px;
+      background: repeating-linear-gradient(
+        45deg,
+        #1d4ed8,
+        #1d4ed8 4px,
+        #1e40af 4px,
+        #1e40af 8px
+      );
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+
+    /* Hand Playability States */
+    .playing-card.playable {
+      cursor: pointer;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+      transform: translateY(-8px);
+    }
+    .playing-card.playable:hover, .playing-card.playable:active {
+      transform: translateY(-16px) scale(1.08);
+      box-shadow: 0 0 18px var(--accent-cyan);
+      z-index: 40;
+    }
+    .playing-card.unplayable {
+      filter: brightness(0.6) grayscale(0.5);
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+
+    /* Human Player Hand Tray */
+    .player-tray {
+      background: rgba(9, 14, 23, 0.95);
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 0.5rem 0.5rem calc(0.8rem + env(safe-area-inset-bottom, 0px)) 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      z-index: 20;
+    }
+    .tray-info-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 0.25rem;
+    }
+    .tray-user-label {
+      font-size: 0.8rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .tray-contract-badge {
+      font-size: 0.74rem;
+      font-weight: 800;
+      padding: 0.15rem 0.55rem;
+      border-radius: 999px;
+      background: #1f2937;
+      border: 1px solid #374151;
+      color: var(--gold-light);
+    }
+    .tray-contract-badge.hit {
+      background: rgba(34, 197, 94, 0.2);
+      border-color: var(--accent-green);
+      color: #4ade80;
+    }
+    .tray-contract-badge.busted {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: var(--accent-red);
+      color: #f87171;
+    }
+
+    .hand-scroll-lane {
+      width: 100%;
+      overflow: visible;
+      padding: 16px 0.25rem 2px 0.25rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    #modalDisconnected { z-index: 120; }
+
+    /* ---- In-game: lock layout to the visible viewport, never scroll ---- */
+    html, body { overscroll-behavior: none; }
+    body.in-game {
+      height: var(--app-h, 100dvh);
+      min-height: 0;
+      overflow: hidden;
+    }
+    body.in-game .app-viewport {
+      height: var(--app-h, 100dvh);
+      min-height: 0;
+      overflow: hidden;
+    }
+    #viewGame { flex: 1; min-height: 0; height: 100%; }
+    .table-center { min-height: 0; }
+
+    /* Hand: one row up to 8 cards, two rows beyond that (no overlap, no scrolling) */
+    .hand-row { display: flex; justify-content: center; gap: 4px; }
+    .playing-card.selected {
+      transform: translateY(-14px) scale(1.06);
+      border-color: var(--gold);
+      box-shadow: 0 0 16px var(--gold-glow), 0 0 0 2px var(--gold);
+      z-index: 50;
+    }
+
+    /* Bid panel (replaces the full-screen bidding modal) */
+    .bid-panel {
+      display: none;
+      flex-direction: column;
+      gap: 0.3rem;
+      padding: 0.4rem 0.6rem;
+      background: rgba(0, 0, 0, 0.55);
+      border-top: 1px solid var(--gold);
+      z-index: 15;
+    }
+    .bid-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+    .bid-panel-title { font-size: 0.75rem; font-weight: 800; color: var(--gold-light); }
+    .bid-panel .bids-grid { grid-template-columns: repeat(7, 1fr); gap: 0.3rem; margin: 0; }
+    .bid-panel .btn-bid { height: 40px; font-size: 1rem; border-radius: 6px; }
+    .btn-bid.selected {
+      background: var(--gold);
+      color: #0f172a;
+      border-color: var(--gold-light);
+      box-shadow: 0 0 10px var(--gold-glow);
+    }
+    .btn-confirm {
+      background: var(--gold);
+      color: #0f172a;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 900;
+      padding: 0.4rem 0.8rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+    }
+    .btn-confirm:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .absent-bar {
+      display: none;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0.3rem 0.6rem;
+      background: rgba(127, 29, 29, 0.35);
+      border-top: 1px solid rgba(239, 68, 68, 0.5);
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .absent-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+    .absent-btn { background: #7f1d1d; border-color: #ef4444; color: #fff; white-space: nowrap; }
+
+    .btn-icon {
+      background: #1f2937;
+      border: 1px solid #374151;
+      color: #e5e7eb;
+      font-size: 0.9rem;
+      width: 34px;
+      height: 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .top-btn-group { display: flex; gap: 0.3rem; }
+    .net-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 6px; background: #22c55e; vertical-align: middle; }
+    .net-dot.warn { background: #f59e0b; }
+    .net-dot.bad { background: #ef4444; animation: popIn 0.6s ease-in-out infinite alternate; }
+    .hand-scroll-lane.sending, .bid-panel.sending { opacity: 0.55; pointer-events: none; }
+
+    .invite-box { display: none; flex-direction: column; gap: 0.35rem; margin-top: 0.6rem; width: 100%; }
+    .invite-box .input-field { font-size: 0.75rem; padding: 0.5rem 0.6rem; font-family: monospace; }
+    .invite-note { font-size: 0.68rem; color: #94a3b8; line-height: 1.35; }
+
+    /* Short phones: tighten the chrome so the table + hand always fit */
+    @media (max-height: 700px) {
+      .game-top-bar { padding: 0.3rem 0.6rem; gap: 0.25rem; }
+      .opponents-section { padding-top: 0.3rem; }
+      .opponent-pod { padding: 0.25rem 0.45rem; }
+      .player-tray { padding-top: 0.3rem; }
+      .trump-dock { transform: scale(0.85); transform-origin: top left; }
+    }
+    /* Modals & Overlays */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease-out;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-content {
+      width: 100%;
+      max-width: 400px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.85);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: 900;
+      color: #fff;
+      text-align: center;
+    }
+    .modal-subtitle {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    /* Bidding Buttons Grid */
+    .bids-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.45rem;
+      margin: 0.4rem 0;
+    }
+    .btn-bid {
+      height: 48px;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1.15rem;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .btn-bid:hover, .btn-bid:active {
+      background: var(--felt-light);
+      border-color: var(--accent-green);
+      transform: scale(1.04);
+    }
+    .btn-bid.forbidden-hook {
+      opacity: 0.35;
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.12);
+      cursor: not-allowed;
+      pointer-events: none;
+      position: relative;
+    }
+    .btn-bid.forbidden-hook::after {
+      content: "HOOKED";
+      font-size: 0.5rem;
+      font-weight: 800;
+      color: #f87171;
+    }
+
+    /* Matrix Table */
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+    .matrix-table th, .matrix-table td {
+      padding: 0.45rem 0.35rem;
+      text-align: center;
+      border-bottom: 1px solid #374151;
+    }
+    .matrix-table th {
+      color: #94a3b8;
+      font-weight: 800;
+      background: rgba(0, 0, 0, 0.25);
+    }
+    .score-gain { color: var(--accent-green); font-weight: 800; }
+    .score-loss { color: var(--accent-red); font-weight: 800; }
+
+    /* Floating Toast */
+    .toast-pill {
+      position: absolute;
+      top: 5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--gold);
+      color: #fff;
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7);
+      z-index: 120;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .toast-pill.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-viewport">
+    <!-- LOBBY SCREEN -->
+    <div id="viewLobby" class="lobby-wrapper">
+      <div class="brand-header">
+        <div class="brand-badge">♠️ ♥️ Online Multiplayer ♣️ ♦️</div>
+        <h1 class="brand-title">German Bridge</h1>
+        <p class="brand-sub">Contract Whist • WebRTC Private Rooms</p>
+      </div>
+
+      <!-- Tab Switcher: Host vs Join -->
+      <div class="card-panel" id="lobbyPanelInitial">
+        <div class="tab-switch">
+          <button id="tabHostBtn" class="tab-btn active" onclick="switchLobbyTab('host')">Host Room</button>
+          <button id="tabJoinBtn" class="tab-btn" onclick="switchLobbyTab('join')">Join Room</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Your Name</label>
+          <input type="text" id="inputPlayerName" class="input-field" placeholder="Enter your handle" maxlength="12" value="Player 1">
+        </div>
+
+        <!-- Host Specific Fields -->
+        <div id="hostFields">
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label">Total Players</label>
+            <div class="count-selector">
+              <button class="count-btn" data-count="2" onclick="selectPlayerCount(2)">2 Players</button>
+              <button class="count-btn" data-count="3" onclick="selectPlayerCount(3)">3 Players</button>
+              <button class="count-btn active" data-count="4" onclick="selectPlayerCount(4)">4 Players</button>
+            </div>
+          </div>
+          <button id="btnCreateRoom" class="btn-cta" onclick="startHostRoom()">Create Private Room 👑</button>
+        </div>
+
+        <!-- Join Specific Fields -->
+        <div id="joinFields" style="display: none;">
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label">5-Letter Room Code</label>
+            <input type="text" id="inputRoomCode" class="input-field" placeholder="e.g. ABCDE" maxlength="5" style="text-transform: uppercase; font-family: monospace; letter-spacing: 0.15em;">
+          </div>
+          <button id="btnJoinRoom" class="btn-cta" onclick="joinGuestRoom()">Join Room 🚪</button>
+        </div>
+      </div>
+
+      <!-- Waiting Lobby Panel -->
+      <div class="card-panel" id="lobbyPanelWaiting" style="display: none;">
+        <div class="room-code-box">
+          <span style="font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Room Code</span>
+          <div class="code-digits" id="lblRoomCodeDisplay">-----</div>
+          <div class="share-row">
+            <button class="btn-mini" onclick="copyRoomCode()">📋 Copy Code</button>
+            <button class="btn-mini" onclick="copyInviteLink()">🔗 Copy Link</button>
+            <button class="btn-mini" onclick="shareInvite()">📤 Share</button>
+          </div>
+          <div class="invite-box" id="inviteBox">
+            <input type="text" id="inputInviteLink" class="input-field" readonly onclick="this.select()">
+            <div class="invite-note" id="lblInviteNote"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label class="form-label">Lobby Players</label>
+            <span id="lblPlayerCountRatio" style="font-size: 0.72rem; color: var(--gold-light); font-weight: 800;">1 / 4</span>
+          </div>
+          <div class="player-roster" id="rosterList"></div>
+        </div>
+
+        <button id="btnStartGame" class="btn-cta" style="display: none;" onclick="hostLaunchGame()">Start Game 🚀</button>
+        <div id="lblWaitingForHost" style="font-size: 0.78rem; color: #94a3b8; text-align: center; display: none;">
+          ⏳ Waiting for host to start the game...
+        </div>
+      </div>
+    </div>
+    <!-- IN-GAME SCREEN -->
+    <div id="viewGame" style="display: none; flex-direction: column;">
+      
+      <!-- Sticky Top Header -->
+      <header class="game-top-bar">
+        <div class="top-meta-row">
+          <div class="room-badge" id="btnGameRoomCode" onclick="copyInviteLink()">Room: -----</div>
+          <div class="hand-pill" id="lblGameRound">Round 1/13 · 1 card</div>
+          <div class="top-btn-group">
+            <button class="btn-icon" title="Scoreboard" onclick="openScoreMatrixModal()">📋</button>
+            <button class="btn-icon" title="Menu" onclick="openMenu()">☰</button>
+          </div>
+        </div>
+
+        <div class="leaderboard-strip" id="gameLeaderboardStrip"></div>
+      </header>
+
+      <!-- Opponents Section -->
+      <div class="opponents-section" id="opponentsArea"></div>
+
+      <!-- Center Trick Table -->
+      <main class="table-center">
+        <!-- Trump Card Dock -->
+        <div class="trump-dock">
+          <span class="trump-label">Trump</span>
+          <div id="trumpCardContainer"></div>
+        </div>
+
+        <!-- Trick Circle -->
+        <div class="trick-arena" id="trickArena"></div>
+
+        <!-- Trick Win Toast -->
+        <div class="trick-toast" id="trickWinnerToast" style="display: none;"></div>
+      </main>
+
+      <!-- Turn & Phase Guide Banner -->
+      <div class="guide-banner" id="lblTurnBanner">Dealing hand...</div>
+
+      <!-- Offline players (host only) -->
+      <div class="absent-bar" id="absentBar"></div>
+
+      <!-- Bid panel: docked above your hand so the cards stay visible while bidding -->
+      <div class="bid-panel" id="bidPanel">
+        <div class="bid-panel-head">
+          <span class="bid-panel-title" id="lblBiddingPrompt">Your bid</span>
+          <button id="btnConfirmBid" class="btn-confirm" onclick="confirmPendingBid()">Pick a number</button>
+        </div>
+        <div class="bids-grid" id="gridBiddingButtons"></div>
+        <div id="lblHookWarning" style="font-size: 0.68rem; color: #f87171; text-align: center; display: none;">
+          👑 Dealer HOOK: you cannot bid the number that makes total bids equal the cards dealt.
+        </div>
+      </div>
+
+      <!-- Human Player Bottom Tray -->
+      <footer class="player-tray">
+        <div class="tray-info-bar">
+          <div class="tray-user-label">
+            <span>👤</span>
+            <span id="lblMyPlayerName">You</span>
+            <span id="lblMyRoleBadge" style="font-size: 0.68rem; color: var(--gold-light);"></span>
+          </div>
+          <button id="btnConfirmPlay" class="btn-confirm" style="display: none;" onclick="confirmSelectedCard()">▶ Play</button>
+          <div class="tray-contract-badge" id="lblMyContract">Won: 0 / Bid: -</div>
+        </div>
+
+        <!-- Hand of Cards -->
+        <div class="hand-scroll-lane" id="myHandContainer"></div>
+      </footer>
+    </div>
+    <!-- ROUND SUMMARY MODAL -->
+    <div class="modal-overlay" id="modalRoundSummary">
+      <div class="modal-content">
+        <div class="modal-title" id="lblRoundSummaryTitle">Round Complete</div>
+        <div class="modal-subtitle">Rule A: Hit (+10+Bid²), Miss (-(Won-Bid)²)</div>
+
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Bid</th>
+              <th>Won</th>
+              <th>Pts</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyRoundSummary"></tbody>
+        </table>
+
+        <button id="btnNextRound" class="btn-cta" style="display: none;" onclick="hostProceedNextRound()">Next Round ▶</button>
+        <div id="lblWaitingNextRound" style="font-size: 0.75rem; color: #94a3b8; text-align: center; display: none;">
+          ⏳ Waiting for host to start next round...
+        </div>
+      </div>
+    </div>
+
+    <!-- MENU MODAL -->
+    <div class="modal-overlay" id="modalMenu">
+      <div class="modal-content">
+        <div class="modal-title">Menu</div>
+        <button id="btnToggleConfirm" class="btn-cta" style="background: #1f2937; color: #fff;" onclick="toggleConfirmMode()">🛡️ Confirm before playing: ON</button>
+        <button class="btn-cta" style="background: #1f2937; color: #fff;" onclick="copyInviteLink()">🔗 Copy invite link</button>
+        <button class="btn-cta" style="background: #1f2937; color: #fff;" onclick="shareInvite()">📤 Share room</button>
+        <button id="btnQuitGame" class="btn-cta" style="background: #7f1d1d; color: #fff;" onclick="quitGame()">🚪 Leave game</button>
+        <div class="modal-subtitle">Leaving as a guest counts as a forfeit; the others keep playing and you are ranked last. The host leaving ends the match for everyone.</div>
+        <button class="btn-cta" style="background: #374151; color: #fff;" onclick="closeMenu()">Close</button>
+      </div>
+    </div>
+
+    <!-- GAME OVER MODAL -->
+    <div class="modal-overlay" id="modalGameOver">
+      <div class="modal-content">
+        <div class="modal-title" id="lblGameOverTitle">Match Complete</div>
+        <div class="modal-subtitle">Final standings after 13 rounds</div>
+
+        <table class="matrix-table">
+          <thead>
+            <tr><th>#</th><th>Player</th><th>Score</th></tr>
+          </thead>
+          <tbody id="tbodyGameOver"></tbody>
+        </table>
+
+        <button class="btn-cta" style="background: #374151; color: #fff;" onclick="openScoreMatrixModal()">📋 Full Scoreboard</button>
+        <button id="btnPlayAgain" class="btn-cta" style="display: none;" onclick="hostPlayAgain()">Play Again 🔁</button>
+        <div id="lblWaitingRematch" style="font-size: 0.75rem; color: #94a3b8; text-align: center; display: none;">
+          ⏳ Waiting for host to start a new match...
+        </div>
+        <button class="btn-cta" style="background: #1f2937; color: #fca5a5;" onclick="leaveRoom()">Leave Room</button>
+      </div>
+    </div>
+
+    <!-- SCORE MATRIX MODAL -->
+    <div class="modal-overlay" id="modalScoreMatrix">
+      <div class="modal-content" style="max-width: 440px;">
+        <div class="modal-title">Scoreboard Matrix</div>
+        <div class="modal-subtitle">Rounds 1 through 13 Progression</div>
+
+        <div style="overflow-x: auto; max-height: 50vh;">
+          <table class="matrix-table">
+            <thead id="theadMatrix"></thead>
+            <tbody id="tbodyMatrix"></tbody>
+          </table>
+        </div>
+
+        <button class="btn-cta" style="background: #374151; color: #fff;" onclick="closeScoreMatrixModal()">Close</button>
+      </div>
+    </div>
+
+    <!-- DISCONNECTED MODAL -->
+    <div class="modal-overlay" id="modalDisconnected">
+      <div class="modal-content">
+        <div class="modal-title">Connection Lost</div>
+        <div class="modal-subtitle" id="lblDisconnectedMsg">Connection to the host was lost.</div>
+        <button id="btnRejoin" class="btn-cta" onclick="guestRejoin()">Rejoin Room 🔄</button>
+        <button class="btn-cta" style="background: #374151; color: #fff;" onclick="leaveRoom()">Leave</button>
+      </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div class="toast-pill" id="appToast">Notification</div>
+
+  </div>
+  <script>
+    /* Web Audio API sound effects for zero-dependency tactile feedback */
+    let audioCtx = null;
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      audioCtx = null;
+    }
+    // Mobile browsers only allow audio after a user gesture: unlock on the first tap.
+    document.addEventListener('pointerdown', () => {
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    }, { passive: true });
+
+    function playBeep(freq, type = 'sine', duration = 0.12) {
+      if (!audioCtx) return;
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        /* audio is optional */
+      }
+    }
+    const soundCard = () => playBeep(420, 'triangle', 0.08);
+    const soundTrickWin = () => { playBeep(523, 'sine', 0.1); setTimeout(() => playBeep(659, 'sine', 0.15), 100); };
+    const soundHook = () => playBeep(220, 'sawtooth', 0.2);
+
+    /* Card Models */
+    const SUITS = [
+      { id: 'S', name: 'Spades', symbol: '♠', isRed: false },
+      { id: 'H', name: 'Hearts', symbol: '♥', isRed: true },
+      { id: 'C', name: 'Clubs', symbol: '♣', isRed: false },
+      { id: 'D', name: 'Diamonds', symbol: '♦', isRed: true }
+    ];
+
+    const RANKS = [
+      { value: 2, label: '2' },
+      { value: 3, label: '3' },
+      { value: 4, label: '4' },
+      { value: 5, label: '5' },
+      { value: 6, label: '6' },
+      { value: 7, label: '7' },
+      { value: 8, label: '8' },
+      { value: 9, label: '9' },
+      { value: 10, label: '10' },
+      { value: 11, label: 'J' },
+      { value: 12, label: 'Q' },
+      { value: 13, label: 'K' },
+      { value: 14, label: 'A' }
+    ];
+
+    function createStandardDeck() {
+      const deck = [];
+      SUITS.forEach(s => {
+        RANKS.forEach(r => {
+          deck.push({
+            suit: s.id,
+            rank: r.value,
+            suitName: s.name,
+            symbol: s.symbol,
+            label: r.label,
+            isRed: s.isRed
+          });
+        });
+      });
+      return deck;
+    }
+
+    function shuffleDeck(deck) {
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      return deck;
+    }
+
+    function sortHand(cards, trumpSuit) {
+      const suitWeights = { 'S': 4, 'H': 3, 'C': 2, 'D': 1 };
+      return [...cards].sort((a, b) => {
+        if (a.suit === trumpSuit && b.suit !== trumpSuit) return -1;
+        if (b.suit === trumpSuit && a.suit !== trumpSuit) return 1;
+        if (a.suit !== b.suit) return suitWeights[b.suit] - suitWeights[a.suit];
+        return b.rank - a.rank;
+      });
+    }
+
+    function renderCardNode(card, sizeClass = '', isFaceUp = true, isPlayable = false) {
+      const el = document.createElement('div');
+      el.className = `playing-card ${sizeClass} ${isFaceUp ? (card.isRed ? 'is-red' : 'is-black') : 'card-back'} ${isPlayable ? 'playable' : ''}`;
+
+      if (!isFaceUp) {
+        el.innerHTML = `<div class="card-back-grid"></div>`;
+        return el;
+      }
+
+      el.innerHTML = `
+        <div class="card-top">
+          <span class="card-rank">${card.label}</span>
+          <span class="card-suit">${card.symbol}</span>
+        </div>
+        <div class="card-mid">${card.symbol}</div>
+        <div class="card-bottom">
+          <span class="card-rank">${card.label}</span>
+          <span class="card-suit">${card.symbol}</span>
+        </div>
+      `;
+      return el;
+    }
+    /* WebRTC & PeerJS Networking State */
+    const PEER_PREFIX = 'gbrg26-';
+    // ICE servers: STUN only by default. Players on mobile data or strict NATs may need a TURN relay.
+    // To add one, append e.g. { urls: 'turn:your.turn.host:3478', username: 'USER', credential: 'PASS' }
+    const PEER_OPTIONS = {
+      debug: 1,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' }
+        ]
+      }
+    };
+    const MAX_NAME_LEN = 12;
+    const CONNECT_TIMEOUT_MS = 15000;
+    const TRICK_REVEAL_MS = 1600;
+    const AUTOPLAY_GRACE_MS = 20000;   // an offline player's turn is auto-played after this long
+    const AUTOPLAY_FORFEIT_MS = 900;   // forfeited seats are auto-played almost immediately
+    const PING_INTERVAL_MS = 4000;     // guests ping the host this often
+    const GUEST_STALE_MS = 12000;      // guest: nothing heard from the host this long => link is dead
+    const HOST_STALE_MS = 25000;       // host: nothing heard from a guest this long => seat treated as offline
+    const ACTION_TIMEOUT_MS = 3000;    // guest: no reaction to a bid / card within this long => check the link
+
+    let peer = null;
+    let isHost = false;
+    let roomCode = '';
+    let myPlayerName = 'Player';
+    let myPlayerIndex = 0;
+    let targetPlayerCount = 4;
+
+    // Host authoritative storage
+    let hostConnections = []; // array of { conn, peerId, playerName, isHost, connected }
+    let hostGameState = null;
+
+    // Guest connection state
+    let hostConn = null;
+    let guestPhase = 'idle'; // 'idle' | 'connecting' | 'joined'
+    let hasJoined = false;
+    let connectTimer = null;
+    let leavingRoom = false;
+
+    // Link health (dead-connection detection, auto-reconnect, action feedback)
+    let stateVersion = 0;          // host: increments on every broadcast
+    let lastStateVersion = -1;     // client: version of the newest state shown
+    let awaitingVersion = null;    // client: version at the moment an action was sent (null = nothing in flight)
+    let actionTimer = null;
+    let pendingActionLost = false;
+    let lastHostMsgAt = 0;         // guest: when anything last arrived from the host
+    let lastWatchdogTick = Date.now();
+    let autoRejoinLeft = 0;
+
+    // Client local state mirror
+    let localGameState = null;
+
+    function generateRoomCode(len = 5) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let res = '';
+      for (let i = 0; i < len; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+      return res;
+    }
+
+    /**
+     * Normalise a player name: collapse whitespace, trim, cap length.
+     * @param {*} raw - untrusted value (user input or network data)
+     * @param {string} fallback - name used when the result is empty
+     * @returns {string}
+     */
+    function sanitizePlayerName(raw, fallback) {
+      const name = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim().slice(0, MAX_NAME_LEN);
+      return name || fallback;
+    }
+
+    /**
+     * Make a name unique within the lobby by appending " 2", " 3", ...
+     * @param {string} base - sanitised name
+     * @returns {string}
+     */
+    function uniquePlayerName(base) {
+      const taken = new Set(hostConnections.map(c => c.playerName.toLowerCase()));
+      if (!taken.has(base.toLowerCase())) return base;
+      for (let i = 2; i < 100; i++) {
+        const suffix = ' ' + i;
+        const candidate = base.slice(0, MAX_NAME_LEN - suffix.length) + suffix;
+        if (!taken.has(candidate.toLowerCase())) return candidate;
+      }
+      return base;
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('appToast');
+      el.textContent = msg;
+      el.classList.add('visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('visible'), 2400);
+    }
+
+    function copyText(str, successMsg) {
+      const legacyCopy = () => {
+        const t = document.createElement('textarea');
+        t.value = str;
+        t.style.position = 'fixed';
+        t.style.left = '-9999px';
+        document.body.appendChild(t);
+        t.select();
+        t.setSelectionRange(0, str.length);
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        document.body.removeChild(t);
+        showToast(ok ? successMsg : 'Copy failed, please copy manually');
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(str).then(() => showToast(successMsg)).catch(legacyCopy);
+      } else {
+        legacyCopy();
+      }
+    }
+
+    function copyRoomCode() {
+      copyText(roomCode, `Room Code ${roomCode} copied!`);
+    }
+
+    /** Invite URL for this room, or null when the page is opened from a local file (link would be useless). */
+    function getInviteLink() {
+      if (!roomCode || window.location.protocol === 'file:') return null;
+      return `${window.location.href.split('#')[0].split('?')[0]}?room=${roomCode}`;
+    }
+
+    function copyInviteLink() {
+      if (!roomCode) return;
+      const link = getInviteLink();
+      if (!link) {
+        // A file:// URL cannot be opened by other people, so share the code instead.
+        copyText(roomCode, 'Opened as a local file: room code copied (friends open the game and enter it)');
+        return;
+      }
+      copyText(link, 'Invite link copied to clipboard!');
+    }
+
+    /** Use the phone's native share sheet (WhatsApp, Messages...) when available; otherwise copy. */
+    function shareInvite() {
+      if (!roomCode) return;
+      const link = getInviteLink();
+      const text = link
+        ? `Join my German Bridge game! Room code: ${roomCode}`
+        : `Join my German Bridge game! Open the game and enter room code: ${roomCode}`;
+      if (navigator.share) {
+        const data = link ? { title: 'German Bridge', text: text, url: link } : { title: 'German Bridge', text: text };
+        navigator.share(data).catch(() => { /* cancelled */ });
+      } else {
+        copyInviteLink();
+      }
+    }
+
+    /** Show the invite link in a selectable box, so it can always be copied by hand if auto-copy is blocked. */
+    function refreshInviteBox() {
+      const box = document.getElementById('inviteBox');
+      const link = getInviteLink();
+      box.style.display = 'flex';
+      const input = document.getElementById('inputInviteLink');
+      const note = document.getElementById('lblInviteNote');
+      if (link) {
+        input.style.display = 'block';
+        input.value = link;
+        note.textContent = 'If Copy does not work, press and hold the link above to copy it.';
+      } else {
+        input.style.display = 'none';
+        note.textContent = 'This page is opened as a local file, so a link cannot be shared. Friends should open the game themselves, choose Join Room and type the code above. To use invite links, put this file on a website (e.g. GitHub Pages).';
+      }
+    }
+
+    function switchLobbyTab(tab) {
+      document.getElementById('tabHostBtn').classList.toggle('active', tab === 'host');
+      document.getElementById('tabJoinBtn').classList.toggle('active', tab === 'join');
+      document.getElementById('hostFields').style.display = tab === 'host' ? 'block' : 'none';
+      document.getElementById('joinFields').style.display = tab === 'join' ? 'block' : 'none';
+    }
+
+    function selectPlayerCount(count) {
+      targetPlayerCount = count;
+      document.querySelectorAll('.count-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.count, 10) === count);
+      });
+    }
+
+    function ensurePeerLibrary() {
+      if (typeof Peer === 'undefined') {
+        showToast('Network library failed to load. Check your connection and reload.');
+        return false;
+      }
+      return true;
+    }
+
+    function destroyPeer() {
+      if (peer) {
+        try { peer.destroy(); } catch (e) { /* already closed */ }
+        peer = null;
+      }
+    }
+
+    /** Re-attach to the signalling server if it drops; open data connections are unaffected. */
+    function attachPeerKeepAlive(p) {
+      p.on('disconnected', () => {
+        if (!p.destroyed) {
+          try { p.reconnect(); } catch (e) { /* will retry on next event */ }
+        }
+      });
+    }
+
+    function sendToPlayer(idx, payload) {
+      const c = hostConnections[idx];
+      if (idx > 0 && c && c.conn && c.conn.open) c.conn.send(payload);
+    }
+
+    function sendToGuests(payload) {
+      hostConnections.forEach((_, idx) => sendToPlayer(idx, payload));
+    }
+
+    /* Host Room Initialization */
+    function startHostRoom() {
+      if (!ensurePeerLibrary()) return;
+      destroyPeer();
+
+      myPlayerName = sanitizePlayerName(document.getElementById('inputPlayerName').value, 'Host');
+      roomCode = generateRoomCode(5);
+      isHost = true;
+      myPlayerIndex = 0;
+      hostGameState = null;
+
+      const createBtn = document.getElementById('btnCreateRoom');
+      createBtn.disabled = true;
+
+      const p = new Peer(PEER_PREFIX + roomCode, { ...PEER_OPTIONS });
+      peer = p;
+
+      p.on('open', (id) => {
+        document.getElementById('lobbyPanelInitial').style.display = 'none';
+        document.getElementById('lobbyPanelWaiting').style.display = 'flex';
+        document.getElementById('lblRoomCodeDisplay').textContent = roomCode;
+        document.getElementById('btnStartGame').style.display = 'block';
+        refreshInviteBox();
+
+        hostConnections = [{ conn: null, peerId: id, playerName: myPlayerName, isHost: true, connected: true, forfeited: false }];
+        updateLobbyRosterUI();
+        showToast(`Room ${roomCode} created! Share the code with friends.`);
+      });
+
+      p.on('connection', (conn) => {
+        conn.on('data', (data) => handleHostIncomingMessage(conn, data));
+        conn.on('close', () => handleHostConnectionClosed(conn));
+        conn.on('error', () => handleHostConnectionClosed(conn));
+      });
+
+      attachPeerKeepAlive(p);
+
+      p.on('error', (err) => {
+        if (err.type === 'unavailable-id') {
+          showToast('Code collision! Generating a fresh room code...');
+          startHostRoom();
+        } else if (err.type === 'peer-unavailable') {
+          /* only relevant to guests */
+        } else {
+          showToast(`Network error: ${err.type}`);
+          if (!p.open) createBtn.disabled = false;
+        }
+      });
+    }
+
+    /* Guest Join Initialization */
+    function setJoinBusy(busy) {
+      const btn = document.getElementById('btnJoinRoom');
+      btn.disabled = busy;
+      btn.textContent = busy ? 'Connecting...' : 'Join Room 🚪';
+    }
+
+    function setRejoinBusy(busy) {
+      const btn = document.getElementById('btnRejoin');
+      btn.disabled = busy;
+      btn.textContent = busy ? 'Connecting...' : 'Rejoin Room 🔄';
+    }
+
+    function joinGuestRoom() {
+      if (guestPhase === 'connecting') return;
+      if (!ensurePeerLibrary()) return;
+
+      const code = document.getElementById('inputRoomCode').value.trim().toUpperCase();
+      if (!/^[A-Z0-9]{5}$/.test(code)) {
+        showToast('Please enter a valid 5-letter Room Code');
+        return;
+      }
+
+      myPlayerName = sanitizePlayerName(document.getElementById('inputPlayerName').value, 'Player');
+      roomCode = code;
+      isHost = false;
+      leavingRoom = false;
+      hasJoined = false;
+      setJoinBusy(true);
+      connectToHost(false);
+    }
+
+    /**
+     * Open (or re-open) the data connection to the host and send GUEST_JOIN.
+     * The lobby screen is only shown after the host answers JOIN_OK.
+     * @param {boolean} isRejoin - true when re-entering a game after a dropped connection
+     */
+    function connectToHost(isRejoin) {
+      guestPhase = 'connecting';
+      clearTimeout(connectTimer);
+      connectTimer = setTimeout(() => handleGuestConnectFailure('Connection timed out.'), CONNECT_TIMEOUT_MS);
+
+      if (hostConn) {
+        const old = hostConn;
+        hostConn = null;
+        try { old.close(); } catch (e) { /* ignore */ }
+      }
+
+      const openConnection = () => {
+        const conn = peer.connect(PEER_PREFIX + roomCode, { reliable: true });
+
+        conn.on('open', () => {
+          if (guestPhase !== 'connecting') {
+            try { conn.close(); } catch (e) { /* ignore */ }
+            return;
+          }
+          hostConn = conn;
+          conn.send({ type: 'GUEST_JOIN', playerName: myPlayerName, rejoin: isRejoin });
+        });
+
+        conn.on('data', (data) => handleGuestIncomingMessage(data));
+        conn.on('close', () => { if (hostConn === conn) handleHostConnectionLost(); });
+        conn.on('error', () => { if (hostConn === conn) handleHostConnectionLost(); });
+      };
+
+      if (peer && !peer.destroyed && !peer.disconnected && peer.open) {
+        openConnection();
+        return;
+      }
+
+      destroyPeer();
+      const p = new Peer(null, { ...PEER_OPTIONS });
+      peer = p;
+      p.on('open', () => openConnection());
+      attachPeerKeepAlive(p);
+      p.on('error', (err) => handleGuestPeerError(err));
+    }
+
+    function handleGuestPeerError(err) {
+      const type = err && err.type;
+      if (guestPhase === 'connecting') {
+        const msg = (type === 'peer-unavailable')
+          ? `Room ${roomCode} not found. Check the code and try again.`
+          : `Could not connect (${type || 'network error'}).`;
+        handleGuestConnectFailure(msg);
+      } else {
+        showToast(`Connection problem: ${type || 'unknown'}`);
+      }
+    }
+
+    /**
+     * Abort a join / rejoin attempt. First-time joins return to the lobby form;
+     * rejoin attempts go back to the "Connection Lost" dialog.
+     * @param {string} message - reason shown to the user
+     */
+    function handleGuestConnectFailure(message) {
+      if (guestPhase !== 'connecting') return;
+      clearTimeout(connectTimer);
+      guestPhase = 'idle';
+
+      if (hostConn) {
+        const old = hostConn;
+        hostConn = null;
+        try { old.close(); } catch (e) { /* ignore */ }
+      }
+
+      if (hasJoined) {
+        if (autoRejoinLeft > 0) {
+          setTimeout(attemptAutoRejoin, 1500); // quietly try again
+        } else {
+          showDisconnectedModal(`${message} You can try again.`);
+        }
+      } else {
+        destroyPeer();
+        setJoinBusy(false);
+        showToast(message);
+      }
+    }
+
+    function handleHostConnectionLost() {
+      if (leavingRoom || isHost) return;
+      hostConn = null;
+      if (!hasJoined) {
+        handleGuestConnectFailure('Host closed the connection.');
+        return;
+      }
+      guestPhase = 'idle';
+      updateNetDot();
+      showToast('Connection lost - reconnecting...');
+      startAutoRejoin();
+    }
+
+    function showDisconnectedModal(message) {
+      document.getElementById('lblDisconnectedMsg').textContent = message;
+      setRejoinBusy(false);
+      document.getElementById('modalDisconnected').classList.add('active');
+    }
+
+    function hideDisconnectedModal() {
+      document.getElementById('modalDisconnected').classList.remove('active');
+    }
+
+    function guestRejoin() {
+      if (guestPhase === 'connecting') return;
+      autoRejoinLeft = 0; // manual attempt: on failure show the dialog again
+      setRejoinBusy(true);
+      connectToHost(true);
+    }
+
+    function leaveRoom() {
+      leavingRoom = true;
+      destroyPeer();
+      window.location.href = window.location.href.split('#')[0].split('?')[0];
+    }
+
+    function renderRosterList(names) {
+      const rosterList = document.getElementById('rosterList');
+      rosterList.innerHTML = '';
+      names.forEach((name, idx) => {
+        const item = document.createElement('div');
+        item.className = `roster-item ${idx === 0 ? 'is-host' : ''}`;
+        item.innerHTML = `
+          <span>${idx + 1}. ${escapeHtml(name)}</span>
+          <span class="roster-pill">${idx === 0 ? '👑 Host' : 'Ready'}</span>
+        `;
+        rosterList.appendChild(item);
+      });
+    }
+
+    function updateLobbyRosterUI() {
+      renderRosterList(hostConnections.map(c => c.playerName));
+
+      document.getElementById('lblPlayerCountRatio').textContent = `${hostConnections.length} / ${targetPlayerCount}`;
+      const startBtn = document.getElementById('btnStartGame');
+      if (startBtn) {
+        startBtn.disabled = hostConnections.length < targetPlayerCount;
+        startBtn.textContent = hostConnections.length >= targetPlayerCount ? 'Start Game 🚀' : `Waiting for players (${hostConnections.length}/${targetPlayerCount})`;
+      }
+    }
+
+    function broadcastRoster() {
+      sendToGuests({
+        type: 'ROSTER_UPDATE',
+        targetPlayerCount: targetPlayerCount,
+        players: hostConnections.map(c => c.playerName)
+      });
+    }
+
+    /* Host Game Launch & Authority */
+    function hostLaunchGame() {
+      if (hostGameState) return;
+      if (hostConnections.length < targetPlayerCount) {
+        showToast(`Need ${targetPlayerCount} players to start!`);
+        return;
+      }
+
+      const playerNames = hostConnections.map(c => c.playerName);
+      hostGameState = {
+        playerCount: targetPlayerCount,
+        players: playerNames.map((name) => ({
+          name: name,
+          score: 0,
+          bid: null,
+          won: 0
+        })),
+        currentRound: 1, // 1 through 13
+        firstDealerIndex: 0,
+        dealerIndex: 0,
+        leadIndex: 1,
+        trumpCard: null,
+        trumpSuit: null,
+        hands: Array.from({ length: targetPlayerCount }, () => []),
+        phase: 'BIDDING', // 'BIDDING' | 'PLAYING' | 'TRICK_REVEAL' | 'ROUND_SUMMARY' | 'GAME_OVER'
+        activePlayerIndex: 1,
+        currentTrick: [], // array of { playerIndex, card }
+        trickWinnerIndex: null,
+        tricksCompleted: 0,
+        history: []
+      };
+
+      hostStartRound(1);
+    }
+
+    function hostStartRound(roundNum) {
+      hostGameState.currentRound = roundNum;
+      const n = hostGameState.playerCount;
+      hostGameState.dealerIndex = (hostGameState.firstDealerIndex + (roundNum - 1)) % n;
+      hostGameState.leadIndex = (hostGameState.dealerIndex + 1) % n;
+      hostGameState.activePlayerIndex = hostGameState.leadIndex;
+      hostGameState.phase = 'BIDDING';
+      hostGameState.currentTrick = [];
+      hostGameState.trickWinnerIndex = null;
+      hostGameState.tricksCompleted = 0;
+
+      for (let p = 0; p < n; p++) {
+        hostGameState.players[p].bid = null;
+        hostGameState.players[p].won = 0;
+      }
+
+      // Deal cards
+      const deck = shuffleDeck(createStandardDeck());
+      hostGameState.hands = Array.from({ length: n }, () => []);
+
+      for (let c = 0; c < roundNum; c++) {
+        for (let p = 0; p < n; p++) {
+          hostGameState.hands[p].push(deck.pop());
+        }
+      }
+
+      // Trump determination: top card of remaining deck
+      if (deck.length > 0) {
+        hostGameState.trumpCard = deck.pop();
+        hostGameState.trumpSuit = hostGameState.trumpCard.suit;
+      } else {
+        // Round 13 with 4 players (52 cards dealt): dealer's 13th card determines trump
+        const dealerCard = hostGameState.hands[hostGameState.dealerIndex][roundNum - 1];
+        hostGameState.trumpCard = { ...dealerCard };
+        hostGameState.trumpSuit = dealerCard.suit;
+      }
+
+      broadcastState();
+    }
+
+    function calculateDealerHookBid(state) {
+      const isDealerTurn = (state.activePlayerIndex === state.dealerIndex);
+      if (!isDealerTurn) return null;
+
+      let sumOtherBids = 0;
+      for (let p = 0; p < state.playerCount; p++) {
+        if (p !== state.dealerIndex) {
+          if (state.players[p].bid === null) return null;
+          sumOtherBids += state.players[p].bid;
+        }
+      }
+
+      const hookVal = state.currentRound - sumOtherBids;
+      return (hookVal >= 0 && hookVal <= state.currentRound) ? hookVal : null;
+    }
+
+    function broadcastState(extraMessage = '', quietSeat = -1) {
+      if (!hostGameState) return;
+      const hookBid = (hostGameState.phase === 'BIDDING') ? calculateDealerHookBid(hostGameState) : null;
+      const version = ++stateVersion;
+
+      // Send sanitized state to each peer (fair play: only send each player's own cards)
+      hostConnections.forEach((connInfo, pIdx) => {
+        const payload = {
+          type: 'GAME_STATE_UPDATE',
+          state: {
+            version: version,
+            playerCount: hostGameState.playerCount,
+            currentRound: hostGameState.currentRound,
+            dealerIndex: hostGameState.dealerIndex,
+            leadIndex: hostGameState.leadIndex,
+            trumpCard: hostGameState.trumpCard,
+            trumpSuit: hostGameState.trumpSuit,
+            phase: hostGameState.phase,
+            activePlayerIndex: hostGameState.activePlayerIndex,
+            currentTrick: hostGameState.currentTrick,
+            trickWinnerIndex: hostGameState.trickWinnerIndex,
+            tricksCompleted: hostGameState.tricksCompleted,
+            forbiddenHookBid: (pIdx === hostGameState.dealerIndex) ? hookBid : null,
+            myPlayerIndex: pIdx,
+            myHand: sortHand(hostGameState.hands[pIdx] || [], hostGameState.trumpSuit),
+            players: hostGameState.players.map((p, idx) => ({
+              name: p.name,
+              score: p.score,
+              bid: p.bid,
+              won: p.won,
+              connected: !hostConnections[idx] || hostConnections[idx].connected !== false,
+              forfeited: !!(hostConnections[idx] && hostConnections[idx].forfeited),
+              cardCount: hostGameState.hands[idx] ? hostGameState.hands[idx].length : 0
+            })),
+            history: hostGameState.history
+          },
+          toast: (pIdx === quietSeat) ? '' : extraMessage
+        };
+
+        if (pIdx === 0) {
+          // Host local update: deep copy so later host-side mutations cannot leak into the mirror
+          try {
+            applyLocalState(JSON.parse(JSON.stringify(payload.state)), payload.toast);
+          } catch (err) {
+            console.error('Host render error:', err); // never block updates to the other players
+          }
+        } else if (connInfo.conn && connInfo.conn.open) {
+          connInfo.conn.send(payload);
+        }
+      });
+
+      scheduleAutoPlay();
+    }
+
+    /**
+     * Store a new state snapshot, play transition sounds, and re-render.
+     * Used by both the host (local mirror) and guests (network updates).
+     * @param {Object} nextState - sanitised state for this player
+     * @param {string} [toast] - optional message to show
+     */
+    function applyLocalState(nextState, toast) {
+      const prev = localGameState;
+      localGameState = nextState;
+      if (typeof nextState.version === 'number') lastStateVersion = nextState.version;
+      // The move counts as received once it is no longer my turn to act (unrelated broadcasts do not cancel the wait).
+      const myTurnToAct = nextState.myPlayerIndex === nextState.activePlayerIndex &&
+        (nextState.phase === 'BIDDING' || nextState.phase === 'PLAYING');
+      if (!myTurnToAct) {
+        awaitingVersion = null;
+        clearTimeout(actionTimer);
+      }
+      playTransitionSounds(prev, nextState);
+      renderGameView();
+      if (toast) showToast(toast);
+    }
+
+    function playTransitionSounds(prev, next) {
+      if (!prev || prev.currentRound !== next.currentRound) return;
+      const bidCount = (st) => st.players.filter(p => p.bid !== null).length;
+      if (next.currentTrick.length > prev.currentTrick.length || bidCount(next) > bidCount(prev)) {
+        soundCard();
+      }
+      if (next.phase === 'TRICK_REVEAL' && prev.phase !== 'TRICK_REVEAL') {
+        setTimeout(soundTrickWin, 120);
+      }
+    }
+
+    /* Host Incoming Actions Handling */
+    function handleHostIncomingMessage(conn, data) {
+      if (!isHost || !data || typeof data !== 'object') return;
+
+      if (data.type === 'GUEST_JOIN') {
+        hostHandleGuestJoin(conn, data);
+        return;
+      }
+
+      // Identify the sender from the connection itself, never from client-supplied indices.
+      const seat = hostConnections.findIndex(c => c.conn === conn);
+      if (seat < 1) {
+        // Unknown connection (e.g. replaced during a reconnect): tell it to rejoin instead of staying silent.
+        try { conn.send({ type: 'ERROR', message: 'Connection not recognised - reconnecting...', needRejoin: true }); } catch (e) { /* ignore */ }
+        return;
+      }
+      hostConnections[seat].lastSeen = Date.now();
+
+      if (data.type === 'PING') {
+        try { conn.send({ type: 'PONG', t: data.t }); } catch (e) { /* ignore */ }
+        return;
+      }
+      if (!hostGameState) return;
+
+      if (data.type === 'ACTION_BID') {
+        hostProcessBid(seat, data.bid);
+      } else if (data.type === 'ACTION_PLAY_CARD') {
+        hostProcessPlayCard(seat, data.card);
+      } else if (data.type === 'ACTION_QUIT') {
+        hostForfeitSeat(seat);
+      }
+    }
+
+    /**
+     * Mark a seat as forfeited: it can no longer rejoin, is auto-played so the others can
+     * finish the match, and is ranked last at the end.
+     * @param {number} seat - seat index (never the host, seat 0)
+     */
+    function hostForfeitSeat(seat) {
+      const entry = hostConnections[seat];
+      if (!hostGameState || seat < 1 || !entry || entry.forfeited) return;
+      entry.forfeited = true;
+      entry.connected = false;
+      const old = entry.conn;
+      entry.conn = null; // detach first so the close event is ignored
+      if (old) { try { old.close(); } catch (e) { /* ignore */ } }
+      broadcastState(`${entry.playerName} forfeited - their seat is auto-played`);
+    }
+
+    /* ---- Auto-play for offline / forfeited seats ---- */
+    let autoPlayTimer = null;
+    let autoPlayKey = '';
+
+    /** If the player whose turn it is has gone offline, schedule an automatic move so the game never stalls. */
+    function scheduleAutoPlay() {
+      const gs = hostGameState;
+      const live = gs && (gs.phase === 'BIDDING' || gs.phase === 'PLAYING');
+      const seat = live ? gs.activePlayerIndex : -1;
+      const entry = hostConnections[seat];
+      const away = live && seat > 0 && entry && entry.connected === false;
+
+      if (!away) {
+        clearTimeout(autoPlayTimer);
+        autoPlayKey = '';
+        return;
+      }
+
+      const key = `${gs.currentRound}|${gs.tricksCompleted}|${gs.currentTrick.length}|${gs.phase}|${seat}`;
+      if (key === autoPlayKey) return; // already scheduled for exactly this turn
+      clearTimeout(autoPlayTimer);
+      autoPlayKey = key;
+
+      const delay = entry.forfeited ? AUTOPLAY_FORFEIT_MS : AUTOPLAY_GRACE_MS;
+      autoPlayTimer = setTimeout(() => {
+        autoPlayKey = '';
+        const g = hostGameState;
+        const e = hostConnections[seat];
+        if (g !== gs || g.activePlayerIndex !== seat || !e || e.connected !== false) return;
+        hostAutoAct(seat);
+      }, delay);
+    }
+
+    /** Make a simple legal move for a seat: bid 0 (or 1 if hooked), play the lowest legal card (non-trump first). */
+    function hostAutoAct(seat) {
+      const gs = hostGameState;
+      if (!gs) return;
+
+      if (gs.phase === 'BIDDING') {
+        const hook = calculateDealerHookBid(gs);
+        hostProcessBid(seat, hook === 0 ? Math.min(1, gs.currentRound) : 0);
+      } else if (gs.phase === 'PLAYING') {
+        const hand = gs.hands[seat];
+        if (!hand || hand.length === 0) return;
+        const led = gs.currentTrick[0] ? gs.currentTrick[0].card.suit : null;
+        const legal = (led && hand.some(c => c.suit === led)) ? hand.filter(c => c.suit === led) : hand;
+        const trump = gs.trumpSuit;
+        const pick = [...legal].sort((a, b) =>
+          ((a.suit === trump) - (b.suit === trump)) || (a.rank - b.rank)
+        )[0];
+        hostProcessPlayCard(seat, { suit: pick.suit, rank: pick.rank });
+      }
+    }
+
+    function rejectJoin(conn, message) {
+      try { conn.send({ type: 'JOIN_REJECTED', message: message }); } catch (e) { /* ignore */ }
+      setTimeout(() => { try { conn.close(); } catch (e) { /* ignore */ } }, 500);
+    }
+
+    function hostHandleGuestJoin(conn, data) {
+      if (hostConnections.some(c => c.conn === conn)) return; // duplicate join on the same connection
+      const requested = sanitizePlayerName(data.playerName, 'Player');
+
+      if (hostGameState) {
+        // Game in progress: only an existing seat can be re-claimed (matched by name).
+        const seat = hostConnections.findIndex((c, i) =>
+          i > 0 &&
+          c.playerName.toLowerCase() === requested.toLowerCase() &&
+          (c.connected === false || data.rejoin === true)
+        );
+        if (seat === -1) {
+          rejectJoin(conn, 'Game already started. Only disconnected players can rejoin.');
+          return;
+        }
+        const entry = hostConnections[seat];
+        if (entry.forfeited) {
+          rejectJoin(conn, 'You forfeited this match, so you cannot rejoin it.');
+          return;
+        }
+        const stale = entry.conn;
+        entry.conn = conn;
+        entry.peerId = conn.peer;
+        entry.connected = true;
+        entry.lastSeen = Date.now();
+        if (stale && stale !== conn) { try { stale.close(); } catch (e) { /* ignore */ } }
+
+        conn.send({ type: 'JOIN_OK', seatIndex: seat, playerName: entry.playerName, inGame: true });
+        broadcastState(`${entry.playerName} reconnected`, seat);
+        return;
+      }
+
+      if (hostConnections.length >= targetPlayerCount) {
+        rejectJoin(conn, 'Room is already full.');
+        return;
+      }
+
+      const name = uniquePlayerName(requested);
+      hostConnections.push({ conn: conn, peerId: conn.peer, playerName: name, isHost: false, connected: true, forfeited: false, lastSeen: Date.now() });
+      conn.send({ type: 'JOIN_OK', seatIndex: hostConnections.length - 1, playerName: name, inGame: false });
+      updateLobbyRosterUI();
+      broadcastRoster();
+    }
+
+    function handleHostConnectionClosed(conn) {
+      const idx = hostConnections.findIndex(c => c.conn === conn);
+      if (idx < 1) return; // unknown, already replaced by a rejoin, or the host itself
+
+      const entry = hostConnections[idx];
+      if (!hostGameState) {
+        // Lobby: free the seat and tell everyone.
+        hostConnections.splice(idx, 1);
+        updateLobbyRosterUI();
+        broadcastRoster();
+      } else {
+        // In game: keep the seat (indices must stay stable) and allow a rejoin.
+        entry.conn = null;
+        entry.connected = false;
+        broadcastState(`${entry.playerName} disconnected - waiting for them to rejoin`);
+      }
+    }
+
+    function handleGuestIncomingMessage(data) {
+      if (!data || typeof data !== 'object') return;
+      lastHostMsgAt = Date.now();
+      if (data.type === 'PONG') {
+        updateNetDot();
+        return;
+      }
+
+      if (data.type === 'JOIN_OK') {
+        clearTimeout(connectTimer);
+        guestPhase = 'joined';
+        hasJoined = true;
+        setJoinBusy(false);
+        myPlayerName = data.playerName || myPlayerName;
+        if (Number.isInteger(data.seatIndex)) myPlayerIndex = data.seatIndex;
+        hideDisconnectedModal();
+        autoRejoinLeft = 0;
+        lastHostMsgAt = Date.now();
+        if (pendingActionLost) {
+          pendingActionLost = false;
+          showToast('Reconnected - please tap your card / bid again.');
+        }
+
+        if (!data.inGame) {
+          document.getElementById('lobbyPanelInitial').style.display = 'none';
+          document.getElementById('lobbyPanelWaiting').style.display = 'flex';
+          document.getElementById('lblRoomCodeDisplay').textContent = roomCode;
+          document.getElementById('lblWaitingForHost').style.display = 'block';
+          showToast('Connected to room lobby!');
+        }
+      } else if (data.type === 'JOIN_REJECTED') {
+        const c = hostConn;
+        hostConn = null; // detach first so the close event is ignored
+        if (c) { try { c.close(); } catch (e) { /* ignore */ } }
+        if (hasJoined) autoRejoinLeft = 0; // a definite "no" from the host (e.g. forfeited): do not keep retrying
+        handleGuestConnectFailure(data.message || 'Could not join this room.');
+      } else if (data.type === 'ROSTER_UPDATE') {
+        document.getElementById('lblPlayerCountRatio').textContent = `${data.players.length} / ${data.targetPlayerCount}`;
+        renderRosterList(data.players);
+      } else if (data.type === 'GAME_STATE_UPDATE') {
+        if (!data.state) return;
+        myPlayerIndex = data.state.myPlayerIndex;
+        applyLocalState(data.state, data.toast);
+      } else if (data.type === 'ERROR') {
+        showToast(data.message);
+        if (data.sound) soundHook();
+        awaitingVersion = null;
+        clearTimeout(actionTimer);
+        if (data.needRejoin) onLinkStale();
+        else if (localGameState) renderGameView();
+      }
+    }
+
+    function sendPlayerAction(action) {
+      if (isHost) {
+        if (action.type === 'ACTION_BID') hostProcessBid(0, action.bid);
+        else if (action.type === 'ACTION_PLAY_CARD') hostProcessPlayCard(0, action.card);
+        return;
+      }
+      if (!hostConn || !hostConn.open) {
+        showToast('Not connected to the host - reconnecting...');
+        checkLinkSoon();
+        return;
+      }
+      awaitingVersion = lastStateVersion;
+      clearTimeout(actionTimer);
+      actionTimer = setTimeout(() => {
+        if (awaitingVersion === null) return;
+        // The host never reacted. Un-grey the screen so the player can retry, and test the link.
+        awaitingVersion = null;
+        pendingActionLost = true;
+        showToast('No response from host - checking the connection...');
+        if (localGameState) renderGameView();
+        checkLinkSoon(() => { pendingActionLost = false; showToast('Connection is fine, but the move was not received. Please tap again.'); });
+      }, ACTION_TIMEOUT_MS);
+      try {
+        hostConn.send(action);
+      } catch (e) {
+        awaitingVersion = null;
+        showToast('Could not send - reconnecting...');
+        onLinkStale();
+      }
+    }
+
+    /* ---------- Link health: heartbeat, dead-connection detection, auto-reconnect ---------- */
+    function sendPing() {
+      if (hostConn && hostConn.open) {
+        try { hostConn.send({ type: 'PING', t: Date.now() }); } catch (e) { /* watchdog will notice */ }
+      }
+    }
+
+    /**
+     * Ping the host now; if nothing comes back within 3s the link is considered dead and we reconnect.
+     * @param {Function} [onAlive] - called if the host answered in time
+     */
+    function checkLinkSoon(onAlive) {
+      if (isHost || leavingRoom) return;
+      if (guestPhase !== 'joined') {
+        if (guestPhase === 'idle' && hasJoined && autoRejoinLeft <= 0) startAutoRejoin();
+        return;
+      }
+      const mark = Date.now();
+      sendPing();
+      setTimeout(() => {
+        if (guestPhase !== 'joined') return;
+        if (lastHostMsgAt < mark) onLinkStale();
+        else if (onAlive) onAlive();
+      }, 3000);
+    }
+
+    /** The connection to the host is silently dead (typical after the phone app was in the background). */
+    function onLinkStale() {
+      if (isHost || leavingRoom || !hasJoined) return;
+      if (guestPhase === 'connecting') return;
+      showToast('Connection dropped - reconnecting...');
+      detachHostConn();
+      guestPhase = 'idle';
+      updateNetDot();
+      startAutoRejoin();
+    }
+
+    function detachHostConn() {
+      if (hostConn) {
+        const old = hostConn;
+        hostConn = null; // detach first so its close event is ignored
+        try { old.close(); } catch (e) { /* ignore */ }
+      }
+    }
+
+    function startAutoRejoin() {
+      clearTimeout(connectTimer);
+      autoRejoinLeft = 3;
+      attemptAutoRejoin();
+    }
+
+    function attemptAutoRejoin() {
+      if (leavingRoom || isHost || guestPhase !== 'idle') return;
+      if (autoRejoinLeft <= 0) {
+        showDisconnectedModal('Could not reconnect automatically.');
+        return;
+      }
+      autoRejoinLeft--;
+      updateNetDot();
+      connectToHost(true);
+    }
+
+    function updateNetDot() {
+      const dot = document.getElementById('netDot');
+      if (!dot) return;
+      let state = 'ok';
+      let title = 'Connected';
+      if (isHost) {
+        if (hostConnections.some((c, i) => i > 0 && c.connected === false && !c.forfeited)) { state = 'warn'; title = 'A player is offline'; }
+      } else if (guestPhase !== 'joined') {
+        state = 'bad'; title = 'Reconnecting...';
+      } else if (Date.now() - lastHostMsgAt > 9000) {
+        state = 'warn'; title = 'Slow connection';
+      }
+      dot.className = 'net-dot ' + state;
+      dot.title = title;
+    }
+
+    /** Runs every few seconds: heartbeat for guests, stale-seat detection for the host. */
+    function netWatchdogTick() {
+      const now = Date.now();
+      // A big gap means the page itself was frozen (app in background): do not blame the network for it.
+      const wasFrozen = (now - lastWatchdogTick) > 10000;
+      lastWatchdogTick = now;
+
+      if (isHost) {
+        if (hostGameState) {
+          if (wasFrozen) {
+            hostConnections.forEach(c => { c.lastSeen = now; });
+            broadcastState(); // push fresh state to everyone after waking up
+          } else {
+            hostConnections.forEach((c, i) => {
+              if (i > 0 && c.conn && c.connected !== false && now - (c.lastSeen || now) > HOST_STALE_MS) {
+                const stale = c.conn;
+                try { stale.close(); } catch (e) { /* ignore */ }
+                handleHostConnectionClosed(stale);
+              }
+            });
+          }
+        }
+      } else if (guestPhase === 'joined') {
+        if (wasFrozen) {
+          checkLinkSoon();
+        } else {
+          sendPing();
+          if (now - lastHostMsgAt > GUEST_STALE_MS) onLinkStale();
+        }
+      }
+      updateNetDot();
+    }
+    setInterval(netWatchdogTick, PING_INTERVAL_MS);
+
+    // Returning to the tab (e.g. from WhatsApp): refresh state / verify the link straight away.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      if (isHost) {
+        if (hostGameState) broadcastState();
+      } else {
+        checkLinkSoon();
+      }
+    });
+
+    /**
+     * Tell a player their action was refused, then resync everyone so UI state
+     * (e.g. a closed bidding dialog) is restored.
+     * @param {number} playerIndex - seat of the offending player
+     * @param {string} message - explanation for the player
+     */
+    function rejectAction(playerIndex, message, quiet) {
+      if (playerIndex === 0) {
+        if (!quiet) soundHook();
+        showToast(message);
+      } else {
+        sendToPlayer(playerIndex, { type: 'ERROR', message: message, sound: !quiet });
+      }
+      broadcastState();
+    }
+
+    /* Host Authoritative Bidding & Trick Resolution */
+    function hostProcessBid(playerIndex, bid) {
+      const gs = hostGameState;
+      if (!gs) return;
+      if (gs.phase !== 'BIDDING' || gs.activePlayerIndex !== playerIndex) {
+        rejectAction(playerIndex, 'Not your turn to bid - screen refreshed.', true);
+        return;
+      }
+
+      if (!Number.isInteger(bid) || bid < 0 || bid > gs.currentRound) {
+        rejectAction(playerIndex, 'Invalid bid.');
+        return;
+      }
+
+      const forbiddenHook = calculateDealerHookBid(gs);
+      if (playerIndex === gs.dealerIndex && forbiddenHook !== null && bid === forbiddenHook) {
+        rejectAction(playerIndex, `You are hooked: you cannot bid ${forbiddenHook}.`);
+        return;
+      }
+
+      gs.players[playerIndex].bid = bid;
+
+      const n = gs.playerCount;
+      const allBid = gs.players.every(p => p.bid !== null);
+
+      if (allBid) {
+        // Transition to trick phase
+        gs.phase = 'PLAYING';
+        gs.activePlayerIndex = gs.leadIndex;
+        broadcastState('All bids placed! First trick starting...');
+      } else {
+        gs.activePlayerIndex = (playerIndex + 1) % n;
+        broadcastState();
+      }
+    }
+
+    function canBeatCard(challenger, bestCard, ledSuit, trumpSuit) {
+      if (challenger.suit === trumpSuit && bestCard.suit !== trumpSuit) return true;
+      if (challenger.suit !== trumpSuit && bestCard.suit === trumpSuit) return false;
+      if (challenger.suit === bestCard.suit) return challenger.rank > bestCard.rank;
+      return false;
+    }
+
+    function determineTrickWinner(trick, trumpSuit) {
+      let winningPlay = trick[0];
+      const ledSuit = trick[0].card.suit;
+
+      for (let i = 1; i < trick.length; i++) {
+        if (canBeatCard(trick[i].card, winningPlay.card, ledSuit, trumpSuit)) {
+          winningPlay = trick[i];
+        }
+      }
+      return winningPlay.playerIndex;
+    }
+
+    function hostProcessPlayCard(playerIndex, card) {
+      const gs = hostGameState;
+      if (!gs) return;
+      if (gs.phase !== 'PLAYING' || gs.activePlayerIndex !== playerIndex) {
+        rejectAction(playerIndex, 'Not your turn to play - screen refreshed.', true);
+        return;
+      }
+      if (!card || typeof card.suit !== 'string' || !Number.isInteger(card.rank)) {
+        rejectAction(playerIndex, 'Invalid card.');
+        return;
+      }
+
+      const hand = gs.hands[playerIndex];
+      const cardIdx = hand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
+      if (cardIdx === -1) {
+        rejectAction(playerIndex, 'That card is not in your hand.');
+        return;
+      }
+
+      // Verify follow suit rule
+      const ledCard = gs.currentTrick[0] ? gs.currentTrick[0].card : null;
+      if (ledCard && hand[cardIdx].suit !== ledCard.suit) {
+        const hasLedSuit = hand.some(c => c.suit === ledCard.suit);
+        if (hasLedSuit) {
+          rejectAction(playerIndex, 'You must follow the led suit.');
+          return;
+        }
+      }
+
+      // Use the card from the authoritative hand, never the client-supplied object.
+      const played = hand.splice(cardIdx, 1)[0];
+      gs.currentTrick.push({ playerIndex: playerIndex, card: played });
+
+      const n = gs.playerCount;
+
+      if (gs.currentTrick.length === n) {
+        // Trick complete
+        const winnerIndex = determineTrickWinner(gs.currentTrick, gs.trumpSuit);
+        gs.players[winnerIndex].won++;
+        gs.tricksCompleted++;
+        gs.phase = 'TRICK_REVEAL';
+        gs.trickWinnerIndex = winnerIndex;
+        gs.activePlayerIndex = winnerIndex;
+
+        broadcastState();
+
+        setTimeout(() => {
+          if (hostGameState !== gs || gs.phase !== 'TRICK_REVEAL') return;
+          gs.currentTrick = [];
+          gs.trickWinnerIndex = null;
+          if (gs.tricksCompleted === gs.currentRound) {
+            // Round Complete! Score with Rule A
+            hostFinishRound();
+          } else {
+            // Next trick led by trick winner
+            gs.phase = 'PLAYING';
+            gs.activePlayerIndex = winnerIndex;
+            broadcastState();
+          }
+        }, TRICK_REVEAL_MS);
+      } else {
+        // Next player in trick clockwise
+        gs.activePlayerIndex = (playerIndex + 1) % n;
+        broadcastState();
+      }
+    }
+
+    function hostFinishRound() {
+      hostGameState.phase = 'ROUND_SUMMARY';
+      const n = hostGameState.playerCount;
+      const summaryDetails = [];
+
+      for (let p = 0; p < n; p++) {
+        const bid = hostGameState.players[p].bid;
+        const won = hostGameState.players[p].won;
+        let delta = 0;
+
+        if (bid === won) {
+          // Rule A Hit: +10 + Bid^2
+          delta = 10 + (bid * bid);
+        } else {
+          // Rule A Miss: - (Won - Bid)^2
+          const diff = Math.abs(won - bid);
+          delta = -(diff * diff);
+        }
+
+        hostGameState.players[p].score += delta;
+        summaryDetails.push({
+          name: hostGameState.players[p].name,
+          bid: bid,
+          won: won,
+          delta: delta,
+          total: hostGameState.players[p].score
+        });
+      }
+
+      hostGameState.history.push({
+        roundNum: hostGameState.currentRound,
+        cards: hostGameState.currentRound,
+        details: summaryDetails
+      });
+
+      broadcastState();
+    }
+
+    function hostProceedNextRound() {
+      const gs = hostGameState;
+      if (!isHost || !gs || gs.phase !== 'ROUND_SUMMARY') return;
+
+      if (gs.currentRound >= 13) {
+        gs.phase = 'GAME_OVER';
+        broadcastState('Match finished!');
+        return;
+      }
+      hostStartRound(gs.currentRound + 1);
+    }
+
+    /** Host only: reset scores and start a fresh 13-round match with the same players. */
+    function hostPlayAgain() {
+      const gs = hostGameState;
+      if (!isHost || !gs || gs.phase !== 'GAME_OVER') return;
+      // A new match: forfeits are cleared (they may rejoin by name); offline seats are auto-played until they do.
+      hostConnections.forEach(c => { c.forfeited = false; });
+
+      gs.players.forEach(p => { p.score = 0; p.bid = null; p.won = 0; });
+      gs.history = [];
+      gs.firstDealerIndex = (gs.firstDealerIndex + 1) % gs.playerCount;
+      hostStartRound(1);
+    }
+    /* Client Rendering Functions */
+    /** True when it is currently someone's turn to bid or play (not during reveal / summary). */
+    function isActiveTurn(s, idx) {
+      return (s.phase === 'BIDDING' || s.phase === 'PLAYING') && s.activePlayerIndex === idx;
+    }
+
+    /**
+     * Competition-rank a list of { score } objects (1,1,3...). Mutates and returns a sorted copy.
+     * @param {Array<{score:number}>} list
+     * @returns {Array} sorted descending, each item gaining `rank` and `tied`
+     */
+    function rankByScore(list) {
+      const active = list.filter(p => !p.forfeited).sort((a, b) => b.score - a.score);
+      active.forEach(p => {
+        p.rank = 1 + active.filter(q => q.score > p.score).length;
+        p.tied = active.filter(q => q.score === p.score).length > 1;
+      });
+      // Anyone who forfeited is ranked below every player who stayed, whatever their score.
+      const quit = list.filter(p => p.forfeited).sort((a, b) => b.score - a.score);
+      quit.forEach(p => { p.rank = active.length + 1; p.tied = false; });
+      return [...active, ...quit];
+    }
+
+    function renderGameView() {
+      if (!localGameState) return;
+
+      document.getElementById('viewLobby').style.display = 'none';
+      document.getElementById('viewGame').style.display = 'flex';
+      document.body.classList.add('in-game');
+      setAppHeight();
+
+      const s = localGameState;
+      const n = s.playerCount;
+
+      // 1. Top Meta
+      document.getElementById('btnGameRoomCode').innerHTML = `Room: ${escapeHtml(roomCode)}<span id="netDot" class="net-dot ok"></span>`;
+      updateNetDot();
+      document.getElementById('lblGameRound').textContent = `Round ${s.currentRound}/13 · ${s.currentRound} card${s.currentRound !== 1 ? 's' : ''}`;
+
+      // 2. Leaderboard Strip
+      const strip = document.getElementById('gameLeaderboardStrip');
+      strip.innerHTML = '';
+      s.players.forEach((p, idx) => {
+        const isTurn = isActiveTurn(s, idx);
+        const plug = playerStatusIcon(p);
+        const role = (idx === s.dealerIndex) ? '👑' : ((idx === s.leadIndex) ? '⭐' : '');
+        const bidStr = p.bid !== null ? p.bid : '-';
+
+        const chip = document.createElement('div');
+        chip.className = `leader-chip ${isTurn ? 'turn-active' : ''} ${idx === myPlayerIndex ? 'is-you' : ''}`;
+        chip.innerHTML = `
+          <span>${plug}${role} ${escapeHtml(p.name)}</span>
+          <span class="chip-score">${p.score}pts</span>
+          <span style="color:var(--gold-light);font-weight:800;">(${p.won}/${bidStr})</span>
+        `;
+        strip.appendChild(chip);
+      });
+
+      // 3. Opponents Pods (Exclude yourself)
+      const oppArea = document.getElementById('opponentsArea');
+      oppArea.innerHTML = '';
+      for (let i = 0; i < n; i++) {
+        if (i === myPlayerIndex) continue;
+        const p = s.players[i];
+        const isTurn = isActiveTurn(s, i);
+        const plug = playerStatusIcon(p);
+        const role = (i === s.dealerIndex) ? '👑' : ((i === s.leadIndex) ? '⭐' : '');
+        const bidStr = p.bid !== null ? `${p.won}/${p.bid}` : 'Bidding...';
+
+        const pod = document.createElement('div');
+        pod.className = `opponent-pod ${isTurn ? 'turn-active' : ''}`;
+        pod.innerHTML = `
+          <div class="opp-name">${plug}${role} ${escapeHtml(p.name)}</div>
+          <div class="opp-meta">${bidStr}</div>
+          <div class="card-fan-count">🂠 ${p.cardCount}</div>
+        `;
+        oppArea.appendChild(pod);
+      }
+
+      // 4. Trump Card Display
+      const trumpBox = document.getElementById('trumpCardContainer');
+      trumpBox.innerHTML = '';
+      if (s.trumpCard) {
+        trumpBox.appendChild(renderCardNode(s.trumpCard, 'card-mini', true));
+      }
+
+      // 5. Trick Felt Arena
+      const arena = document.getElementById('trickArena');
+      arena.innerHTML = '';
+      const posMap = getTrickPositions(n, myPlayerIndex);
+
+      s.currentTrick.forEach(play => {
+        const slot = document.createElement('div');
+        slot.className = `trick-slot ${posMap[play.playerIndex] || 'pos-top'}`;
+        slot.appendChild(renderCardNode(play.card, '', true));
+
+        const tag = document.createElement('span');
+        tag.className = 'slot-player-tag';
+        tag.textContent = s.players[play.playerIndex].name;
+        slot.appendChild(tag);
+
+        arena.appendChild(slot);
+      });
+
+      // 5b. Trick winner toast (shown during the reveal pause)
+      const trickToast = document.getElementById('trickWinnerToast');
+      if (s.phase === 'TRICK_REVEAL' && s.trickWinnerIndex !== null && s.players[s.trickWinnerIndex]) {
+        trickToast.textContent = `🏆 ${s.players[s.trickWinnerIndex].name} wins the trick`;
+        trickToast.style.display = 'block';
+      } else {
+        trickToast.style.display = 'none';
+      }
+
+      // 6. Turn Prompt Banner
+      const banner = document.getElementById('lblTurnBanner');
+      const sendingNow = isActionInFlight() && s.activePlayerIndex === myPlayerIndex;
+      const activePlayer = s.players[s.activePlayerIndex];
+      const activeName = activePlayer ? activePlayer.name : '';
+      const activeAway = activePlayer && activePlayer.connected === false;
+      if (s.phase === 'BIDDING') {
+        banner.textContent = (s.activePlayerIndex === myPlayerIndex) ?
+          '👉 Your turn to BID! Predict your tricks.' :
+          (activeAway ? awayBannerText(activePlayer) : `⏳ Waiting for ${activeName} to declare bid...`);
+      } else if (s.phase === 'PLAYING') {
+        banner.textContent = (s.activePlayerIndex === myPlayerIndex) ?
+          '👉 Your turn! Tap a highlighted card to play.' :
+          (activeAway ? awayBannerText(activePlayer) : `⏳ Waiting for ${activeName} to play a card...`);
+      } else if (s.phase === 'TRICK_REVEAL') {
+        banner.textContent = 'Trick complete!';
+      } else if (s.phase === 'ROUND_SUMMARY') {
+        banner.textContent = `Round ${s.currentRound} finished!`;
+      } else if (s.phase === 'GAME_OVER') {
+        banner.textContent = '🏁 Match finished!';
+      }
+      if (sendingNow) banner.textContent = '📤 Sending your move...';
+
+      // 7. Human Hand Tray
+      const me = s.players[myPlayerIndex];
+      document.getElementById('lblMyPlayerName').textContent = me.name;
+      const myRole = (myPlayerIndex === s.dealerIndex) ? '👑 Dealer' : ((myPlayerIndex === s.leadIndex) ? '⭐ First Lead' : '');
+      document.getElementById('lblMyRoleBadge').textContent = myRole;
+
+      const contractBadge = document.getElementById('lblMyContract');
+      if (me.bid !== null) {
+        contractBadge.textContent = `Won: ${me.won} / Bid: ${me.bid}`;
+        if (me.won === me.bid) contractBadge.className = 'tray-contract-badge hit';
+        else if (me.won > me.bid) contractBadge.className = 'tray-contract-badge busted';
+        else contractBadge.className = 'tray-contract-badge';
+      } else {
+        contractBadge.textContent = 'Bidding...';
+        contractBadge.className = 'tray-contract-badge';
+      }
+
+      renderMyHandCards();
+
+      // 8. Bid panel + offline bar
+      renderBidPanel();
+      renderAbsentBar();
+
+      // 9. Round Summary Modal Trigger
+      const modalSummary = document.getElementById('modalRoundSummary');
+      if (s.phase === 'ROUND_SUMMARY') {
+        renderRoundSummaryModal();
+      } else {
+        modalSummary.classList.remove('active');
+      }
+
+      // 10. Game Over Modal Trigger
+      const modalOver = document.getElementById('modalGameOver');
+      if (s.phase === 'GAME_OVER') {
+        renderGameOverModal();
+      } else {
+        modalOver.classList.remove('active');
+      }
+    }
+
+    function getTrickPositions(playerCount, myIdx) {
+      const positions = ['pos-bottom', 'pos-left', 'pos-top', 'pos-right'];
+      const map = {};
+      for (let i = 0; i < playerCount; i++) {
+        const offset = (i - myIdx + playerCount) % playerCount;
+        if (playerCount === 2) {
+          map[i] = (offset === 0) ? 'pos-bottom' : 'pos-top';
+        } else if (playerCount === 3) {
+          map[i] = (offset === 0) ? 'pos-bottom' : (offset === 1 ? 'pos-left' : 'pos-right');
+        } else {
+          map[i] = positions[offset];
+        }
+      }
+      return map;
+    }
+
+    /* ---------- Confirm-before-play setting, selection state ---------- */
+    let confirmMode = true;
+    try { confirmMode = (localStorage.getItem('gb_confirm') !== '0'); } catch (e) { confirmMode = true; }
+    let selectedCardKey = null;
+    let pendingBid = null;
+
+    function cardKey(c) { return c.suit + ':' + c.rank; }
+
+    function cardLabel(c) { return `${c.label}${c.symbol}`; }
+
+    function updateConfirmToggleUI() {
+      const btn = document.getElementById('btnToggleConfirm');
+      if (btn) btn.textContent = `🛡️ Confirm before playing: ${confirmMode ? 'ON' : 'OFF'}`;
+    }
+
+    function toggleConfirmMode() {
+      confirmMode = !confirmMode;
+      try { localStorage.setItem('gb_confirm', confirmMode ? '1' : '0'); } catch (e) { /* storage unavailable */ }
+      selectedCardKey = null;
+      pendingBid = null;
+      updateConfirmToggleUI();
+      if (localGameState) renderGameView();
+      showToast(confirmMode ? 'Confirm ON: tap a card, then tap it again (or press Play).' : 'Confirm OFF: cards play instantly.');
+    }
+
+    /**
+     * Render the player's hand. Up to 8 cards sit in one row; 9-13 cards are split into two
+     * rows so nothing overlaps or needs scrolling and every card keeps a comfortable tap target.
+     */
+    function renderMyHandCards() {
+      const container = document.getElementById('myHandContainer');
+      container.innerHTML = '';
+      const s = localGameState;
+      const hand = s.myHand || [];
+      const isMyTurn = (s.phase === 'PLAYING' && s.activePlayerIndex === myPlayerIndex);
+
+      const ledCard = s.currentTrick[0]?.card;
+      const ledSuit = ledCard ? ledCard.suit : null;
+      const hasLedSuit = ledSuit ? hand.some(c => c.suit === ledSuit) : false;
+
+      // Drop a stale selection (turn passed, or the card is gone).
+      if (!isMyTurn || !hand.some(c => cardKey(c) === selectedCardKey)) selectedCardKey = null;
+      container.classList.toggle('sending', isMyTurn && isActionInFlight());
+
+      // Size cards so a full row always fits the tray width.
+      const n = hand.length;
+      const rowCount = n > 8 ? 2 : 1;
+      const perRow = rowCount === 1 ? Math.max(n, 1) : Math.ceil(n / 2);
+      const GAP = 4;
+      const available = (container.clientWidth || 360) - 8;
+      const maxW = (rowCount === 2) ? 50 : 56;
+      const cardW = Math.max(34, Math.min(maxW, Math.floor((available - GAP * (perRow - 1)) / perRow)));
+      container.style.setProperty('--card-w', cardW + 'px');
+      container.style.setProperty('--card-h', Math.round(cardW * 1.56) + 'px');
+
+      const rows = [];
+      for (let r = 0; r < rowCount; r++) {
+        const row = document.createElement('div');
+        row.className = 'hand-row';
+        container.appendChild(row);
+        rows.push(row);
+      }
+
+      hand.forEach((card, i) => {
+        let isPlayable = false;
+        if (isMyTurn) {
+          if (!ledSuit) isPlayable = true;                    // leading: any card
+          else if (hasLedSuit) isPlayable = (card.suit === ledSuit); // must follow suit
+          else isPlayable = true;                             // void: discard or trump
+        }
+
+        const node = renderCardNode(card, 'card-hand', true, isPlayable);
+        if (cardKey(card) === selectedCardKey) node.classList.add('selected');
+
+        if (isMyTurn && !isPlayable) {
+          node.classList.add('unplayable');
+          node.addEventListener('click', () => {
+            const ledObj = SUITS.find(u => u.id === ledSuit);
+            showToast(`Must follow led suit (${ledObj.symbol} ${ledObj.name})!`);
+          });
+        } else if (isPlayable) {
+          node.addEventListener('click', () => onHandCardTap(card));
+        }
+
+        rows[Math.min(Math.floor(i / perRow), rowCount - 1)].appendChild(node);
+      });
+
+      updateConfirmPlayButton();
+    }
+
+    /** First tap selects a card; tapping it again (or the Play button) plays it. */
+    function onHandCardTap(card) {
+      if (!confirmMode) {
+        playSelectedCard(card);
+        return;
+      }
+      if (selectedCardKey === cardKey(card)) {
+        playSelectedCard(card);
+        return;
+      }
+      selectedCardKey = cardKey(card);
+      renderMyHandCards();
+    }
+
+    function playSelectedCard(card) {
+      selectedCardKey = null;
+      sendPlayerAction({ type: 'ACTION_PLAY_CARD', card: { suit: card.suit, rank: card.rank } });
+      if (awaitingVersion !== null && localGameState) renderGameView(); // show "sending..." straight away
+    }
+
+    function confirmSelectedCard() {
+      if (!localGameState || !selectedCardKey) return;
+      const card = (localGameState.myHand || []).find(c => cardKey(c) === selectedCardKey);
+      if (card) playSelectedCard(card);
+    }
+
+    function updateConfirmPlayButton() {
+      const btn = document.getElementById('btnConfirmPlay');
+      if (!btn) return;
+      const card = selectedCardKey && (localGameState.myHand || []).find(c => cardKey(c) === selectedCardKey);
+      if (card) {
+        btn.textContent = `▶ Play ${cardLabel(card)}`;
+        btn.style.display = 'inline-flex';
+      } else {
+        btn.style.display = 'none';
+      }
+    }
+
+    /* Bidding Panel: docked above the hand, so your cards stay visible while you bid. */
+    function renderBidPanel() {
+      const panel = document.getElementById('bidPanel');
+      const s = localGameState;
+      const myTurn = (s.phase === 'BIDDING' && s.activePlayerIndex === myPlayerIndex);
+      if (!myTurn) {
+        pendingBid = null;
+        panel.style.display = 'none';
+        return;
+      }
+
+      const forbiddenHook = s.forbiddenHookBid;
+      if (pendingBid !== null && (pendingBid > s.currentRound || pendingBid === forbiddenHook)) pendingBid = null;
+
+      const grid = document.getElementById('gridBiddingButtons');
+      grid.innerHTML = '';
+      document.getElementById('lblHookWarning').style.display = (forbiddenHook !== null) ? 'block' : 'none';
+
+      for (let b = 0; b <= s.currentRound; b++) {
+        const btn = document.createElement('button');
+        btn.className = 'btn-bid' + (b === pendingBid ? ' selected' : '');
+        btn.textContent = b;
+        if (forbiddenHook !== null && b === forbiddenHook) {
+          btn.classList.add('forbidden-hook');
+          btn.disabled = true;
+        } else {
+          btn.addEventListener('click', () => {
+            if (confirmMode) {
+              pendingBid = b;
+              renderBidPanel();
+            } else {
+              submitBid(b);
+            }
+          });
+        }
+        grid.appendChild(btn);
+      }
+
+      document.getElementById('lblBiddingPrompt').textContent =
+        `Your bid - Round ${s.currentRound} (${s.currentRound} card${s.currentRound !== 1 ? 's' : ''})`;
+
+      const confirmBtn = document.getElementById('btnConfirmBid');
+      const inFlight = isActionInFlight();
+      if (confirmMode || inFlight) {
+        confirmBtn.style.display = 'inline-flex';
+        confirmBtn.disabled = inFlight || (pendingBid === null);
+        confirmBtn.textContent = inFlight ? 'Sending...' : ((pendingBid === null) ? 'Pick a number' : `Confirm bid ${pendingBid} ✔`);
+      } else {
+        confirmBtn.style.display = 'none';
+      }
+      panel.classList.toggle('sending', inFlight);
+      panel.style.display = 'flex';
+    }
+
+    function submitBid(b) {
+      pendingBid = null;
+      sendPlayerAction({ type: 'ACTION_BID', bid: b });
+      if (awaitingVersion !== null && localGameState) renderGameView();
+    }
+
+    /** True while one of my moves has been sent and the host has not answered yet. */
+    function isActionInFlight() {
+      return awaitingVersion !== null;
+    }
+
+    function confirmPendingBid() {
+      if (pendingBid !== null) submitBid(pendingBid);
+    }
+
+    /* Offline-player bar (host only): shows who is away and lets the host forfeit them. */
+    let forfeitArmedSeat = null;
+    let forfeitArmTimer = null;
+
+    function renderAbsentBar() {
+      const bar = document.getElementById('absentBar');
+      const s = localGameState;
+      const live = ['BIDDING', 'PLAYING', 'TRICK_REVEAL', 'ROUND_SUMMARY'].includes(s.phase);
+      const away = s.players
+        .map((p, i) => ({ p: p, i: i }))
+        .filter(x => x.i !== 0 && x.p.connected === false && !x.p.forfeited);
+
+      if (!isHost || !live || away.length === 0) {
+        bar.style.display = 'none';
+        bar.innerHTML = '';
+        return;
+      }
+
+      bar.innerHTML = '';
+      away.forEach(x => {
+        const row = document.createElement('div');
+        row.className = 'absent-row';
+        const label = document.createElement('span');
+        label.textContent = `🔌 ${x.p.name} is offline`;
+        const btn = document.createElement('button');
+        btn.className = 'btn-mini absent-btn';
+        btn.textContent = (forfeitArmedSeat === x.i) ? 'Tap again to forfeit' : 'Forfeit';
+        btn.addEventListener('click', () => {
+          if (forfeitArmedSeat === x.i) {
+            forfeitArmedSeat = null;
+            hostForfeitSeat(x.i);
+          } else {
+            forfeitArmedSeat = x.i;
+            clearTimeout(forfeitArmTimer);
+            forfeitArmTimer = setTimeout(() => { forfeitArmedSeat = null; if (localGameState) renderAbsentBar(); }, 3500);
+            renderAbsentBar();
+          }
+        });
+        row.appendChild(label);
+        row.appendChild(btn);
+        bar.appendChild(row);
+      });
+      bar.style.display = 'flex';
+    }
+
+    /** Icon shown next to a player's name: forfeited, offline, or nothing. */
+    function playerStatusIcon(p) {
+      if (p.forfeited) return '🏳️ ';
+      if (p.connected === false) return '🔌 ';
+      return '';
+    }
+
+    function awayBannerText(p) {
+      if (p.forfeited) return `🤖 ${p.name} forfeited - auto-playing their seat...`;
+      return `🔌 ${p.name} is offline - auto-play in ${Math.round(AUTOPLAY_GRACE_MS / 1000)}s unless they rejoin`;
+    }
+
+    /* In-game menu */
+    let quitArmed = false;
+    let quitArmTimer = null;
+
+    function openMenu() {
+      updateConfirmToggleUI();
+      quitArmed = false;
+      const quitBtn = document.getElementById('btnQuitGame');
+      quitBtn.textContent = isHost ? '🚪 End game for everyone' : '🚪 Leave game (counts as forfeit)';
+      document.getElementById('modalMenu').classList.add('active');
+    }
+
+    function closeMenu() {
+      document.getElementById('modalMenu').classList.remove('active');
+    }
+
+    /** Two-tap leave. A guest forfeits (others continue); the host ends the match for everyone. */
+    function quitGame() {
+      const quitBtn = document.getElementById('btnQuitGame');
+      if (!quitArmed) {
+        quitArmed = true;
+        quitBtn.textContent = isHost ? 'Tap again: end the game for all' : 'Tap again to leave and forfeit';
+        clearTimeout(quitArmTimer);
+        quitArmTimer = setTimeout(() => { quitArmed = false; openMenu(); }, 3500);
+        return;
+      }
+      clearTimeout(quitArmTimer);
+      if (!isHost && hostConn && hostConn.open) {
+        try { hostConn.send({ type: 'ACTION_QUIT' }); } catch (e) { /* leaving anyway */ }
+        setTimeout(leaveRoom, 300);
+      } else {
+        leaveRoom();
+      }
+    }
+
+    /* Round Summary Dialog */
+    function renderRoundSummaryModal() {
+      const s = localGameState;
+      const modal = document.getElementById('modalRoundSummary');
+      document.getElementById('lblRoundSummaryTitle').textContent = `Round ${s.currentRound} Complete!`;
+
+      const tbody = document.getElementById('tbodyRoundSummary');
+      tbody.innerHTML = '';
+
+      s.players.forEach(p => {
+        const tr = document.createElement('tr');
+        const diff = p.won - p.bid;
+        const delta = (diff === 0) ? (10 + p.bid * p.bid) : -(diff * diff);
+        const sign = delta >= 0 ? `+${delta}` : `${delta}`;
+        const scoreClass = delta >= 0 ? 'score-gain' : 'score-loss';
+
+        tr.innerHTML = `
+          <td style="font-weight:700;">${escapeHtml(p.name)}</td>
+          <td>${p.bid}</td>
+          <td>${p.won}</td>
+          <td class="${scoreClass}">${sign}</td>
+          <td style="font-weight:900;">${p.score}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const nextBtn = document.getElementById('btnNextRound');
+      const waitNotice = document.getElementById('lblWaitingNextRound');
+
+      if (isHost) {
+        nextBtn.style.display = 'block';
+        waitNotice.style.display = 'none';
+        nextBtn.textContent = (s.currentRound >= 13) ? '🏆 View Final Standings' : `Start Round ${s.currentRound + 1} ▶`;
+      } else {
+        nextBtn.style.display = 'none';
+        waitNotice.style.display = 'block';
+        waitNotice.textContent = (s.currentRound >= 13)
+          ? '⏳ Waiting for host to show the final standings...'
+          : '⏳ Waiting for host to start next round...';
+      }
+
+      modal.classList.add('active');
+    }
+
+    /* Game Over Dialog */
+    function renderGameOverModal() {
+      const s = localGameState;
+      const ranked = rankByScore(s.players.map((p, idx) => ({ name: p.name, score: p.score, idx: idx, forfeited: p.forfeited === true })));
+
+      const winners = ranked.filter(p => !p.forfeited && p.rank === 1).map(p => p.name);
+      document.getElementById('lblGameOverTitle').textContent = (winners.length > 1)
+        ? `🏆 Tie: ${winners.join(' & ')}`
+        : (winners.length === 1 ? `🏆 ${winners[0]} wins!` : 'Match ended');
+
+      const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+      const tbody = document.getElementById('tbodyGameOver');
+      tbody.innerHTML = '';
+      ranked.forEach(p => {
+        const tr = document.createElement('tr');
+        const scoreClass = p.score >= 0 ? 'score-gain' : 'score-loss';
+        tr.innerHTML = `
+          <td>${p.forfeited ? '🏳️' : ((medals[p.rank] || p.rank) + (p.tied ? '=' : ''))}</td>
+          <td style="font-weight:700;">${escapeHtml(p.name)}${p.idx === myPlayerIndex ? ' (you)' : ''}${p.forfeited ? ' (forfeit)' : ''}</td>
+          <td class="${scoreClass}" style="font-weight:900;">${p.score}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('btnPlayAgain').style.display = isHost ? 'flex' : 'none';
+      document.getElementById('lblWaitingRematch').style.display = isHost ? 'none' : 'block';
+
+      document.getElementById('modalGameOver').classList.add('active');
+    }
+
+    /* Scoreboard Matrix Modal */
+    function openScoreMatrixModal() {
+      if (!localGameState) return;
+      const thead = document.getElementById('theadMatrix');
+      const tbody = document.getElementById('tbodyMatrix');
+      const s = localGameState;
+
+      let hHtml = `<tr><th>Rnd</th><th>Crd</th>`;
+      s.players.forEach(p => hHtml += `<th>${escapeHtml(p.name)}</th>`);
+      hHtml += `</tr>`;
+      thead.innerHTML = hHtml;
+
+      tbody.innerHTML = '';
+      s.history.forEach(rec => {
+        const tr = document.createElement('tr');
+        let rHtml = `<td>#${rec.roundNum}</td><td>${rec.cards}</td>`;
+        rec.details.forEach(d => {
+          const sign = d.delta >= 0 ? `+${d.delta}` : `${d.delta}`;
+          const colClass = d.delta >= 0 ? 'score-gain' : 'score-loss';
+          rHtml += `<td>${d.bid}/${d.won} <span class="${colClass}" style="font-size:0.65rem;">(${sign})</span></td>`;
+        });
+        tr.innerHTML = rHtml;
+        tbody.appendChild(tr);
+      });
+
+      // Total Row
+      const trTot = document.createElement('tr');
+      trTot.style.background = 'rgba(255,255,255,0.06)';
+      let totHtml = `<td colspan="2" style="font-weight:900; color:var(--gold);">TOTAL</td>`;
+      s.players.forEach(p => {
+        totHtml += `<td style="font-weight:900; font-size:0.9rem; color:#fff;">${p.score}</td>`;
+      });
+      trTot.innerHTML = totHtml;
+      tbody.appendChild(trTot);
+
+      document.getElementById('modalScoreMatrix').classList.add('active');
+    }
+
+    function closeScoreMatrixModal() {
+      document.getElementById('modalScoreMatrix').classList.remove('active');
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Auto-detect invite link parameters (?room=CODE)
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomParam = (urlParams.get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+      if (roomParam) {
+        switchLobbyTab('join');
+        document.getElementById('inputRoomCode').value = roomParam;
+        showToast(`Invite code ${roomParam} detected! Enter your name to join.`);
+      }
+    });
+
+    // Re-fit the hand when the viewport changes (rotation, browser bars).
+    function setAppHeight() {
+      const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      document.documentElement.style.setProperty('--app-h', Math.round(h) + 'px');
+    }
+    setAppHeight();
+    window.addEventListener('resize', () => {
+      setAppHeight();
+      if (localGameState) renderMyHandCards();
+    });
+    window.addEventListener('orientationchange', () => setTimeout(setAppHeight, 200));
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
+
+    // The host is the game server: warn before closing the tab mid-match.
+    window.addEventListener('beforeunload', (e) => {
+      if (isHost && hostGameState && hostGameState.phase !== 'GAME_OVER') {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+  </script>
+</body>
+</html>

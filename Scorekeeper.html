@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>German Bridge Scorekeeper</title>
+  <style>
+    :root {
+      --bg-canvas: #090e17;
+      --bg-surface: #111a2e;
+      --bg-surface-elevated: #1a2742;
+      --bg-card: #152238;
+      --border-subtle: #233554;
+      --border-focus: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent-green: #10b981;
+      --accent-green-bg: rgba(16, 185, 129, 0.16);
+      --accent-red: #f43f5e;
+      --accent-red-bg: rgba(244, 63, 94, 0.16);
+      --accent-amber: #f59e0b;
+      --accent-amber-bg: rgba(245, 158, 11, 0.16);
+      --accent-sky: #38bdf8;
+      --accent-sky-bg: rgba(56, 189, 248, 0.16);
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-pill: 9999px;
+      --shadow-elevation: 0 10px 25px -4px rgba(0, 0, 0, 0.6), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+      --tap-target: 48px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #030712;
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      overflow-x: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    input, textarea, select {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .mobile-app-shell {
+      width: 100%;
+      max-width: 480px;
+      min-height: 100vh;
+      min-height: 100dvh;
+      background-color: var(--bg-canvas);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+      border-left: 1px solid rgba(255, 255, 255, 0.05);
+      border-right: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .sticky-top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background-color: rgba(17, 26, 46, 0.94);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.65rem 0.85rem 0.5rem 0.85rem;
+    }
+
+    .top-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.45rem;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .brand-symbol {
+      width: 1.85rem;
+      height: 1.85rem;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, #10b981, #0284c7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+    }
+
+    .brand-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .top-action-pill {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      border-radius: var(--radius-pill);
+      padding: 0.32rem 0.65rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .top-action-pill:active {
+      background: #273b5f;
+    }
+
+    .mini-leaderboard {
+      display: flex;
+      gap: 0.45rem;
+      overflow-x: auto;
+      padding-bottom: 0.15rem;
+      scrollbar-width: none;
+    }
+    .mini-leaderboard::-webkit-scrollbar { display: none; }
+
+    .mini-leader-chip {
+      flex: 1;
+      min-width: 86px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.3rem 0.45rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+    .mini-leader-chip.rank-first {
+      border-color: rgba(245, 158, 11, 0.55);
+      background: linear-gradient(180deg, rgba(245, 158, 11, 0.14), var(--bg-surface));
+    }
+    .chip-name {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 82px;
+    }
+    .chip-score {
+      font-size: 0.88rem;
+      font-weight: 900;
+      line-height: 1.1;
+    }
+    .text-green { color: var(--accent-green); }
+    .text-red { color: var(--accent-red); }
+    .text-muted { color: var(--text-muted); }
+
+    .content-area {
+      flex: 1;
+      padding: 0.85rem 0.85rem 6.5rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .round-meta-card {
+      background: linear-gradient(180deg, var(--bg-surface), var(--bg-card));
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    }
+
+    .round-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .round-indicator {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+    .round-number-text {
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+    }
+    .cards-count-badge {
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: var(--radius-pill);
+      padding: 0.18rem 0.6rem;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .role-pills-row {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .role-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.22rem 0.55rem;
+      border-radius: var(--radius-pill);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .role-pill.lead {
+      background: var(--accent-green-bg);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .role-pill.dealer {
+      background: var(--accent-amber-bg);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .player-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      position: relative;
+      transition: border-color 0.2s;
+    }
+    .player-card.is-lead {
+      border-left: 4px solid var(--accent-green);
+    }
+    .player-card.is-dealer {
+      border-left: 4px solid var(--accent-amber);
+    }
+
+    .player-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .player-identity {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .player-name-text {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #ffffff;
+    }
+    .player-mini-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.12rem 0.38rem;
+      border-radius: var(--radius-sm);
+    }
+
+    .player-round-result {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .pts-badge {
+      font-size: 0.78rem;
+      font-weight: 800;
+      padding: 0.16rem 0.45rem;
+      border-radius: var(--radius-sm);
+    }
+    .pts-hit {
+      background: var(--accent-green-bg);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+    .pts-miss {
+      background: var(--accent-red-bg);
+      color: #fda4af;
+      border: 1px solid rgba(244, 63, 94, 0.35);
+    }
+    .pts-cum {
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      font-weight: 700;
+    }
+
+    .steppers-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+
+    .stepper-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .stepper-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 0.2rem;
+    }
+    .stepper-title {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--text-muted);
+    }
+    .stepper-hint {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+    .stepper-clear {
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      border-radius: var(--radius-pill);
+      width: 1.35rem;
+      height: 1.35rem;
+      font-size: 0.7rem;
+      line-height: 1;
+      cursor: pointer;
+      margin-left: 0.3rem;
+    }
+    .stepper-clear:active { background: var(--accent-red-bg); color: var(--accent-red); }
+    .stepper-header-right { display: flex; align-items: center; }
+
+    .stepper-controls {
+      display: flex;
+      align-items: stretch;
+      gap: 0.25rem;
+      height: var(--tap-target);
+    }
+
+    .touch-btn {
+      flex: 0 0 46px;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      color: #ffffff;
+      border-radius: var(--radius-sm);
+      font-size: 1.4rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .touch-btn:active {
+      transform: scale(0.92);
+      background: #33486e;
+    }
+
+    .stepper-value-display {
+      flex: 1;
+      background: #090f1a;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: #ffffff;
+      font-size: 1.25rem;
+      font-weight: 900;
+      text-align: center;
+      line-height: var(--tap-target);
+      min-width: 0;
+    }
+    .stepper-value-display.is-unset {
+      color: var(--text-dim);
+    }
+    .stepper-value-display.forbidden-alert {
+      background: rgba(244, 63, 94, 0.2);
+      border-color: var(--accent-red);
+      color: #fda4af;
+      animation: pulseAlert 1s infinite alternate;
+    }
+
+    @keyframes pulseAlert {
+      from { box-shadow: 0 0 2px var(--accent-red); }
+      to { box-shadow: 0 0 10px var(--accent-red); }
+    }
+
+    .round-feedback-banner {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.65rem 0.85rem;
+      font-size: 0.78rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .feedback-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .badge-status {
+      padding: 0.16rem 0.48rem;
+      border-radius: var(--radius-pill);
+      font-weight: 700;
+      font-size: 0.7rem;
+    }
+    .status-ok {
+      background: var(--accent-green-bg);
+      color: var(--accent-green);
+    }
+    .status-warn {
+      background: var(--accent-red-bg);
+      color: #fda4af;
+    }
+    .status-info {
+      background: var(--accent-amber-bg);
+      color: #fbbf24;
+    }
+
+    .bottom-dock {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      background: rgba(17, 26, 46, 0.95);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid var(--border-subtle);
+      padding: 0.6rem 0.75rem calc(0.6rem + env(safe-area-inset-bottom, 0px)) 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      z-index: 50;
+    }
+
+    .nav-btn {
+      height: 48px;
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.88rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      gap: 0.25rem;
+      user-select: none;
+    }
+    .nav-btn:active {
+      transform: scale(0.96);
+    }
+    .nav-btn-prev {
+      flex: 1;
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
+      border-color: var(--border-subtle);
+    }
+    .nav-btn-next {
+      flex: 1.4;
+      background: var(--accent-green);
+      color: #022c22;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+    }
+    .nav-btn-next:disabled, .nav-btn-prev:disabled {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+    .nav-icon-btn {
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+      background: var(--bg-surface-elevated);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.15rem;
+      cursor: pointer;
+    }
+    .nav-icon-btn:active {
+      background: #2a3c61;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease-out;
+    }
+    .modal-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .bottom-sheet {
+      width: 100%;
+      max-width: 480px;
+      background: var(--bg-card);
+      border-top-left-radius: var(--radius-lg);
+      border-top-right-radius: var(--radius-lg);
+      border-top: 1px solid var(--border-subtle);
+      box-shadow: var(--shadow-elevation);
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1);
+      padding-bottom: env(safe-area-inset-bottom, 12px);
+    }
+    .modal-backdrop.active .bottom-sheet {
+      transform: translateY(0);
+    }
+
+    .sheet-handle-bar {
+      width: 40px;
+      height: 4px;
+      background: var(--border-subtle);
+      border-radius: var(--radius-pill);
+      margin: 0.6rem auto 0.4rem auto;
+    }
+    .sheet-header {
+      padding: 0.5rem 1rem 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sheet-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+    }
+    .sheet-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.4rem;
+      cursor: pointer;
+      padding: 0.2rem 0.5rem;
+    }
+    .sheet-content {
+      padding: 1rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+    }
+    .matrix-table th, .matrix-table td {
+      padding: 0.45rem 0.35rem;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: center;
+    }
+    .matrix-table th {
+      background: var(--bg-surface);
+      color: var(--text-muted);
+      font-weight: 800;
+      position: sticky;
+      top: 0;
+    }
+    .matrix-row.active-round-row {
+      background: rgba(16, 185, 129, 0.12);
+    }
+    .matrix-row:active {
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .podium-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 0.9rem;
+      margin-bottom: 0.65rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .podium-card.rank-1 {
+      border-color: rgba(245, 158, 11, 0.55);
+      background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), var(--bg-surface));
+    }
+
+    .setup-screen {
+      padding: 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .setup-title {
+      font-size: 1.35rem;
+      font-weight: 900;
+      text-align: center;
+      margin-bottom: 0.2rem;
+    }
+    .setup-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .form-label {
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: var(--text-muted);
+    }
+    .pill-selector {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    .pill-btn {
+      height: 44px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-weight: 800;
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+    .pill-btn.active {
+      background: var(--accent-green-bg);
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+    }
+    .input-control {
+      height: 44px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: #ffffff;
+      padding: 0 0.85rem;
+      font-size: 1rem;
+      font-weight: 700;
+      outline: none;
+    }
+    .input-control:focus {
+      border-color: var(--accent-green);
+    }
+
+    .toast-box {
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: #1e293b;
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.82rem;
+      font-weight: 800;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+      z-index: 150;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+      white-space: nowrap;
+    }
+    .toast-box.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="mobile-app-shell">
+
+    <!-- SETUP VIEW -->
+    <div id="setupView" class="setup-screen" style="display: none;">
+      <div>
+        <div style="font-size: 2.2rem; text-align: center; margin-bottom: 0.25rem;">♠️</div>
+        <h1 class="setup-title">German Bridge</h1>
+        <p class="setup-subtitle">One-Hand Scorekeeper • Rule A (Square Scoring)</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Number of Players</label>
+        <div class="pill-selector" id="setupPlayerCounts">
+          <button type="button" class="pill-btn" data-count="2">2 Players</button>
+          <button type="button" class="pill-btn active" data-count="3">3 Players</button>
+          <button type="button" class="pill-btn" data-count="4">4 Players</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Player Names (Clockwise Order)</label>
+        <div id="setupPlayerInputs" style="display:flex; flex-direction:column; gap:0.4rem;"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Round 1 Dealer (1-Card Hand)</label>
+        <select id="setupFirstDealerSelect" class="input-control"></select>
+        <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.2rem;">
+          Rule: First bidder & lead trick is clockwise next to Dealer. Dealer bids last (Hooked).
+        </div>
+      </div>
+
+      <button id="btnStartGame" class="nav-btn nav-btn-next" style="width: 100%; margin-top: 0.5rem;">
+        Start Match
+      </button>
+
+      <button id="btnOpenImportBackup" class="top-action-pill" style="justify-content: center; width: 100%; padding: 0.6rem;">
+        Import Backup JSON
+      </button>
+    </div>
+
+    <!-- GAMEPLAY VIEW -->
+    <div id="gameView" style="display: flex; flex-direction: column; flex: 1;">
+      
+      <!-- Sticky Top Bar -->
+      <header class="sticky-top-bar">
+        <div class="top-header-row">
+          <div class="brand-group">
+            <div class="brand-symbol">♠</div>
+            <div class="brand-title">German Bridge</div>
+          </div>
+          <div style="display: flex; gap: 0.35rem;">
+            <button id="btnTopStandings" class="top-action-pill">🏆 Standings</button>
+            <button id="btnTopMenu" class="top-action-pill">⚙️ Menu</button>
+          </div>
+        </div>
+
+        <!-- Horizontal Mini Leaderboard -->
+        <div class="mini-leaderboard" id="miniLeaderboardChips"></div>
+      </header>
+
+      <!-- Main Round Content -->
+      <main class="content-area">
+        
+        <!-- Round Meta Card -->
+        <div class="round-meta-card">
+          <div class="round-title-row">
+            <div class="round-indicator">
+              <span class="round-number-text" id="roundTitleLabel">Round 1</span>
+              <span class="cards-count-badge" id="roundCardsLabel">1 Card</span>
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-dim); font-weight: 700;">
+              Rounds 1 - 13
+            </div>
+          </div>
+
+          <div class="role-pills-row">
+            <div class="role-pill lead" id="roundLeadRolePill">⭐ Lead: Player</div>
+            <div class="role-pill dealer" id="roundDealerRolePill">👑 Dealer: Player</div>
+          </div>
+        </div>
+
+        <!-- Players Stack -->
+        <div id="roundPlayersList" style="display: flex; flex-direction: column; gap: 0.65rem;"></div>
+
+        <!-- Round Validation Feedback Banner -->
+        <div class="round-feedback-banner" id="roundFeedbackBanner"></div>
+
+      </main>
+
+      <!-- Fixed Bottom Navigation Dock -->
+      <nav class="bottom-dock">
+        <button id="btnPrevRound" class="nav-btn nav-btn-prev">
+          ◀ Prev
+        </button>
+
+        <button id="btnOpenMatrix" class="nav-icon-btn" title="View 1-13 Rounds Full Matrix">
+          📋
+        </button>
+
+        <button id="btnOpenStandings" class="nav-icon-btn" title="View Match Standings">
+          🏁
+        </button>
+
+        <button id="btnNextRound" class="nav-btn nav-btn-next">
+          Next ▶
+        </button>
+      </nav>
+
+    </div>
+
+    <!-- FULL MATRIX MODAL -->
+    <div id="matrixModal" class="modal-backdrop">
+      <div class="bottom-sheet">
+        <div class="sheet-handle-bar"></div>
+        <div class="sheet-header">
+          <h3 class="sheet-title">1 - 13 Rounds Full Scorecard</h3>
+          <button class="sheet-close-btn" data-close="matrixModal">&times;</button>
+        </div>
+        <div class="sheet-content" style="padding: 0.5rem;">
+          <div style="overflow-x: auto;">
+            <table class="matrix-table" id="matrixTable">
+              <thead id="matrixTableHead"></thead>
+              <tbody id="matrixTableBody"></tbody>
+            </table>
+          </div>
+          <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.5rem; text-align: center;">
+            Tap any round row to jump directly to it
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STANDINGS MODAL -->
+    <div id="standingsModal" class="modal-backdrop">
+      <div class="bottom-sheet">
+        <div class="sheet-handle-bar"></div>
+        <div class="sheet-header">
+          <h3 class="sheet-title">🏆 Match Standings</h3>
+          <button class="sheet-close-btn" data-close="standingsModal">&times;</button>
+        </div>
+        <div class="sheet-content">
+          <div id="podiumList"></div>
+          
+          <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <button id="btnCopyStandingsReport" class="nav-btn nav-btn-next" style="flex: 1;">
+              📋 Copy Summary Report
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS & OPTIONS MODAL -->
+    <div id="optionsModal" class="modal-backdrop">
+      <div class="bottom-sheet">
+        <div class="sheet-handle-bar"></div>
+        <div class="sheet-header">
+          <h3 class="sheet-title">Match Settings & Backup</h3>
+          <button class="sheet-close-btn" data-close="optionsModal">&times;</button>
+        </div>
+        <div class="sheet-content" style="display: flex; flex-direction: column; gap: 0.85rem;">
+          <button id="btnExportJsonFile" class="nav-btn nav-btn-prev" style="width: 100%;">
+            📥 Download Match Backup (.JSON)
+          </button>
+          <button id="btnCopyJsonClipboard" class="nav-btn nav-btn-prev" style="width: 100%;">
+            📄 Copy JSON to Clipboard
+          </button>
+          
+          <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.85rem;">
+            <label class="form-label" style="margin-bottom: 0.3rem;">Import Backup JSON</label>
+            <textarea id="importJsonInput" class="input-control" rows="3" style="height: auto; width: 100%; padding: 0.5rem;" placeholder="Paste JSON text here..."></textarea>
+            <div style="display: flex; gap: 0.4rem; margin-top: 0.4rem;">
+              <input type="file" id="filePickerInput" accept=".json" style="display: none;">
+              <button id="btnSelectFileImport" class="top-action-pill" style="flex: 1; justify-content: center;">Choose File</button>
+              <button id="btnExecuteTextImport" class="top-action-pill" style="flex: 1; justify-content: center; background: var(--accent-green-bg); color: var(--accent-green);">Restore</button>
+            </div>
+          </div>
+
+          <button id="btnPromptResetGame" class="nav-btn" style="background: var(--accent-red-bg); color: #fda4af; border-color: rgba(244, 63, 94, 0.4); margin-top: 0.5rem;">
+            🔄 Start New Match (Reset)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESET CONFIRMATION MODAL -->
+    <div id="confirmModal" class="modal-backdrop">
+      <div class="bottom-sheet" style="max-height: 40vh;">
+        <div class="sheet-handle-bar"></div>
+        <div class="sheet-header">
+          <h3 class="sheet-title">Start a New Match?</h3>
+          <button class="sheet-close-btn" data-close="confirmModal">&times;</button>
+        </div>
+        <div class="sheet-content">
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+            All 13 rounds of data will be cleared. If you wish to keep them, download a backup first.
+          </p>
+          <div style="display: flex; gap: 0.6rem;">
+            <button class="nav-btn nav-btn-prev" data-close="confirmModal" style="flex: 1;">Cancel</button>
+            <button id="btnConfirmResetAction" class="nav-btn" style="flex: 1; background: var(--accent-red); color: #ffffff;">Reset Now</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification Element -->
+    <div id="toastBox" class="toast-box"></div>
+
+  </div>
+
+  <script>
+    const TOTAL_ROUNDS = 13;
+    const STORAGE_KEY = 'german_bridge_en_v1_state';
+
+    let gameState = {
+      isGameActive: false,
+      playerCount: 3,
+      players: ['Player C', 'Player I', 'Player E'],
+      firstDealerIndex: 0,
+      currentRoundIndex: 0,
+      rounds: []
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initDomEvents();
+      const hasSaved = loadGameState();
+      if (!hasSaved) {
+        generateDefaultRounds();
+      }
+      renderSetupForm();
+      if (gameState.isGameActive) {
+        showGameplayView();
+      } else {
+        showSetupView();
+      }
+    });
+
+    function saveGameState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+      } catch (err) {
+        console.warn('LocalStorage save error:', err);
+      }
+    }
+
+    function loadGameState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const clean = sanitizeGameState(JSON.parse(raw));
+          if (clean) {
+            gameState = clean;
+            return true;
+          }
+        }
+      } catch (err) {
+        console.warn('LocalStorage load error:', err);
+      }
+      return false;
+    }
+
+    /**
+     * Validate and normalise a game-state object (from localStorage or an imported backup).
+     * Args: data - parsed JSON of unknown shape.
+     * Returns: a clean gameState object, or null if the structure is invalid.
+     */
+    function sanitizeGameState(data) {
+      if (!data || typeof data !== 'object') return null;
+
+      const n = data.playerCount;
+      if (!Number.isInteger(n) || n < 2 || n > 4) return null;
+      if (!Array.isArray(data.players) || data.players.length !== n) return null;
+      if (!Array.isArray(data.rounds) || data.rounds.length !== TOTAL_ROUNDS) return null;
+
+      const players = data.players.map((name, i) =>
+        (typeof name === 'string' && name.trim()) ? name.trim().slice(0, 16) : `Player ${i + 1}`
+      );
+
+      const isValidCount = (v, max) => v === null || (Number.isInteger(v) && v >= 0 && v <= max);
+
+      const rounds = [];
+      for (let r = 0; r < TOTAL_ROUNDS; r++) {
+        const rd = data.rounds[r];
+        if (!rd || !Array.isArray(rd.entries) || rd.entries.length !== n) return null;
+        const cards = r + 1;
+        const entries = [];
+        for (let p = 0; p < n; p++) {
+          const e = rd.entries[p];
+          if (!e || typeof e !== 'object') return null;
+          const bid = (e.bid === undefined) ? null : e.bid;
+          const actual = (e.actual === undefined) ? null : e.actual;
+          if (!isValidCount(bid, cards) || !isValidCount(actual, cards)) return null;
+          entries.push({ bid: bid, actual: actual });
+        }
+        rounds.push({ roundNum: cards, cards: cards, leadIndex: 0, dealerIndex: 0, entries: entries });
+      }
+
+      let firstDealer = Number.isInteger(data.firstDealerIndex) ? data.firstDealerIndex : 0;
+      if (firstDealer < 0 || firstDealer >= n) firstDealer = 0;
+
+      // Dealer / lead are always derived from firstDealerIndex, never trusted from the file.
+      rounds.forEach((rd, r) => {
+        rd.dealerIndex = (firstDealer + r) % n;
+        rd.leadIndex = (rd.dealerIndex + 1) % n;
+      });
+
+      let cur = Number.isInteger(data.currentRoundIndex) ? data.currentRoundIndex : 0;
+      cur = Math.min(Math.max(cur, 0), TOTAL_ROUNDS - 1);
+
+      return {
+        isGameActive: data.isGameActive !== false,
+        playerCount: n,
+        players: players,
+        firstDealerIndex: firstDealer,
+        currentRoundIndex: cur,
+        rounds: rounds
+      };
+    }
+
+    function generateDefaultRounds() {
+      gameState.rounds = [];
+      const n = gameState.playerCount;
+      const initialDealer = gameState.firstDealerIndex;
+
+      for (let r = 0; r < TOTAL_ROUNDS; r++) {
+        const cards = r + 1;
+        // Dealer moves clockwise each round
+        const dealerIdx = (initialDealer + r) % n;
+        // First bidder / Lead trick is clockwise next to dealer
+        const leadIdx = (dealerIdx + 1) % n;
+
+        const entries = [];
+        for (let p = 0; p < n; p++) {
+          entries.push({ bid: null, actual: null });
+        }
+
+        gameState.rounds.push({
+          roundNum: r + 1,
+          cards: cards,
+          leadIndex: leadIdx,
+          dealerIndex: dealerIdx,
+          entries: entries
+        });
+      }
+    }
+
+    function renderSetupForm() {
+      document.querySelectorAll('#setupPlayerCounts .pill-btn').forEach(btn => {
+        const cnt = parseInt(btn.dataset.count, 10);
+        btn.classList.toggle('active', cnt === gameState.playerCount);
+      });
+
+      while (gameState.players.length < gameState.playerCount) {
+        gameState.players.push(`Player ${String.fromCharCode(65 + gameState.players.length)}`);
+      }
+      gameState.players = gameState.players.slice(0, gameState.playerCount);
+
+      const inputsContainer = document.getElementById('setupPlayerInputs');
+      inputsContainer.innerHTML = '';
+      gameState.players.forEach((name, idx) => {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'input-control';
+        input.value = name;
+        input.placeholder = `Player ${idx + 1}`;
+        input.maxLength = 16;
+        input.addEventListener('input', (e) => {
+          gameState.players[idx] = e.target.value.trim() || `Player ${idx + 1}`;
+          updateDealerSelectOptions();
+        });
+        inputsContainer.appendChild(input);
+      });
+
+      updateDealerSelectOptions();
+    }
+
+    function updateDealerSelectOptions() {
+      const select = document.getElementById('setupFirstDealerSelect');
+      select.innerHTML = '';
+      gameState.players.forEach((name, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = `${name} (Seat ${idx + 1})`;
+        if (idx === gameState.firstDealerIndex) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    function initDomEvents() {
+      document.getElementById('setupPlayerCounts').addEventListener('click', (e) => {
+        const btn = e.target.closest('.pill-btn');
+        if (!btn) return;
+        gameState.playerCount = parseInt(btn.dataset.count, 10);
+        if (gameState.firstDealerIndex >= gameState.playerCount) {
+          gameState.firstDealerIndex = 0;
+        }
+        renderSetupForm();
+      });
+
+      document.getElementById('setupFirstDealerSelect').addEventListener('change', (e) => {
+        gameState.firstDealerIndex = parseInt(e.target.value, 10);
+      });
+
+      document.getElementById('btnStartGame').addEventListener('click', () => {
+        generateDefaultRounds();
+        gameState.isGameActive = true;
+        gameState.currentRoundIndex = 0;
+        saveGameState();
+        showGameplayView();
+      });
+
+      document.getElementById('btnPrevRound').addEventListener('click', () => {
+        if (gameState.currentRoundIndex > 0) {
+          gameState.currentRoundIndex--;
+          saveGameState();
+          renderCurrentRoundView();
+        }
+      });
+
+      document.getElementById('btnNextRound').addEventListener('click', () => {
+        if (gameState.currentRoundIndex < TOTAL_ROUNDS - 1) {
+          gameState.currentRoundIndex++;
+          saveGameState();
+          renderCurrentRoundView();
+        } else {
+          openModal('standingsModal');
+        }
+      });
+
+      document.getElementById('btnTopStandings').addEventListener('click', () => openModal('standingsModal'));
+      document.getElementById('btnOpenStandings').addEventListener('click', () => openModal('standingsModal'));
+      document.getElementById('btnOpenMatrix').addEventListener('click', () => {
+        renderMatrixTable();
+        openModal('matrixModal');
+      });
+      document.getElementById('btnTopMenu').addEventListener('click', () => openModal('optionsModal'));
+      document.getElementById('btnOpenImportBackup').addEventListener('click', () => openModal('optionsModal'));
+
+      document.querySelectorAll('[data-close]').forEach(el => {
+        el.addEventListener('click', () => {
+          closeModal(el.dataset.close);
+        });
+      });
+
+      document.querySelectorAll('.modal-backdrop').forEach(bd => {
+        bd.addEventListener('click', (e) => {
+          if (e.target === bd) {
+            closeModal(bd.id);
+          }
+        });
+      });
+
+      document.getElementById('btnPromptResetGame').addEventListener('click', () => {
+        closeModal('optionsModal');
+        openModal('confirmModal');
+      });
+
+      document.getElementById('btnConfirmResetAction').addEventListener('click', () => {
+        closeModal('confirmModal');
+        resetToNewGame();
+      });
+
+      document.getElementById('btnCopyStandingsReport').addEventListener('click', copySummaryToClipboard);
+      document.getElementById('btnExportJsonFile').addEventListener('click', exportBackupJson);
+      document.getElementById('btnCopyJsonClipboard').addEventListener('click', copyJsonStringToClipboard);
+      document.getElementById('btnSelectFileImport').addEventListener('click', () => {
+        document.getElementById('filePickerInput').click();
+      });
+      document.getElementById('filePickerInput').addEventListener('change', handleFilePicker);
+      document.getElementById('btnExecuteTextImport').addEventListener('click', handleManualTextImport);
+    }
+
+    function showSetupView() {
+      document.getElementById('setupView').style.display = 'flex';
+      document.getElementById('gameView').style.display = 'none';
+    }
+
+    function showGameplayView() {
+      document.getElementById('setupView').style.display = 'none';
+      document.getElementById('gameView').style.display = 'flex';
+      renderCurrentRoundView();
+    }
+
+    function calculateGameStats() {
+      const n = gameState.playerCount;
+      const runningTotals = new Array(n).fill(0);
+      const hitCounts = new Array(n).fill(0);
+      const completedRounds = new Array(n).fill(0);
+      const perRoundCumulative = [];
+
+      for (let r = 0; r < TOTAL_ROUNDS; r++) {
+        const round = gameState.rounds[r];
+        const roundPts = new Array(n).fill(null);
+
+        for (let p = 0; p < n; p++) {
+          const entry = round.entries[p];
+          if (entry.bid !== null && entry.actual !== null) {
+            const b = entry.bid;
+            const a = entry.actual;
+            let pts = 0;
+            if (a === b) {
+              // Exact match: + (10 + Bid^2)
+              pts = 10 + (b * b);
+              hitCounts[p]++;
+            } else {
+              // Missed bid: - (Actual - Bid)^2
+              const diff = Math.abs(a - b);
+              pts = -(diff * diff);
+            }
+            roundPts[p] = pts;
+            runningTotals[p] += pts;
+            completedRounds[p]++;
+          }
+        }
+        perRoundCumulative.push([...runningTotals]);
+      }
+
+      return {
+        totals: runningTotals,
+        hitCounts: hitCounts,
+        completedRounds: completedRounds,
+        perRoundCumulative: perRoundCumulative
+      };
+    }
+
+    function renderCurrentRoundView() {
+      const rIdx = gameState.currentRoundIndex;
+      const round = gameState.rounds[rIdx];
+      const n = gameState.playerCount;
+      const stats = calculateGameStats();
+
+      // Header labels
+      document.getElementById('roundTitleLabel').textContent = `Round ${round.roundNum}`;
+      document.getElementById('roundCardsLabel').textContent = `${round.cards} Card${round.cards > 1 ? 's' : ''}`;
+
+      const leadPlayer = gameState.players[round.leadIndex];
+      const dealerPlayer = gameState.players[round.dealerIndex];
+      document.getElementById('roundLeadRolePill').textContent = `⭐ Lead: ${leadPlayer}`;
+      document.getElementById('roundDealerRolePill').textContent = `👑 Dealer: ${dealerPlayer}`;
+
+      // Navigation button states
+      document.getElementById('btnPrevRound').disabled = (rIdx === 0);
+      const nextBtn = document.getElementById('btnNextRound');
+      if (rIdx === TOTAL_ROUNDS - 1) {
+        nextBtn.textContent = '🏁 Standings';
+      } else {
+        nextBtn.textContent = 'Next ▶';
+      }
+
+      // Check Dealer Hook (forbidden bid)
+      let sumOtherBids = 0;
+      let allOthersBid = true;
+      for (let p = 0; p < n; p++) {
+        if (p !== round.dealerIndex) {
+          if (round.entries[p].bid === null) {
+            allOthersBid = false;
+          } else {
+            sumOtherBids += round.entries[p].bid;
+          }
+        }
+      }
+
+      let forbiddenBid = null;
+      if (allOthersBid) {
+        const diff = round.cards - sumOtherBids;
+        if (diff >= 0 && diff <= round.cards) {
+          forbiddenBid = diff;
+        }
+      }
+
+      // Render top mini leaderboard
+      renderMiniLeaderboard(stats);
+
+      // Render player cards
+      const container = document.getElementById('roundPlayersList');
+      container.innerHTML = '';
+
+      // Play order starting from leadIndex to dealerIndex
+      const playOrder = [];
+      for (let i = 0; i < n; i++) {
+        playOrder.push((round.leadIndex + i) % n);
+      }
+
+      playOrder.forEach((pIdx) => {
+        const entry = round.entries[pIdx];
+        const isLead = (pIdx === round.leadIndex);
+        const isDealer = (pIdx === round.dealerIndex);
+
+        const card = document.createElement('div');
+        card.className = `player-card ${isLead ? 'is-lead' : ''} ${isDealer ? 'is-dealer' : ''}`;
+
+        const header = document.createElement('div');
+        header.className = 'player-card-header';
+
+        let tagHtml = '';
+        if (isLead) tagHtml += `<span class="player-mini-tag" style="background:var(--accent-green-bg); color:var(--accent-green);">⭐ Lead</span>`;
+        if (isDealer) tagHtml += `<span class="player-mini-tag" style="background:var(--accent-amber-bg); color:#fbbf24;">👑 Dealer</span>`;
+
+        let resultHtml = `<span class="pts-cum">Total: ${stats.totals[pIdx]} pts</span>`;
+        if (entry.bid !== null && entry.actual !== null) {
+          const hit = (entry.bid === entry.actual);
+          const pts = hit ? (10 + entry.bid * entry.bid) : -Math.pow(Math.abs(entry.actual - entry.bid), 2);
+          const badgeClass = hit ? 'pts-hit' : 'pts-miss';
+          const sign = pts >= 0 ? `+${pts}` : `${pts}`;
+          resultHtml = `
+            <span class="pts-badge ${badgeClass}">${sign} pts</span>
+            <span class="pts-cum">(${stats.perRoundCumulative[rIdx][pIdx]})</span>
+          `;
+        }
+
+        header.innerHTML = `
+          <div class="player-identity">
+            <span class="player-name-text">${escapeHtml(gameState.players[pIdx])}</span>
+            ${tagHtml}
+          </div>
+          <div class="player-round-result">${resultHtml}</div>
+        `;
+        card.appendChild(header);
+
+        // Stepper controls
+        const steppers = document.createElement('div');
+        steppers.className = 'steppers-container';
+
+        const isDealerForbidden = (isDealer && forbiddenBid !== null && entry.bid !== null && entry.bid === forbiddenBid);
+        const bidDisplay = entry.bid !== null ? entry.bid : '-';
+        const actDisplay = entry.actual !== null ? entry.actual : '-';
+
+        steppers.innerHTML = `
+          <!-- Bid Stepper -->
+          <div class="stepper-box">
+            <div class="stepper-header">
+              <span class="stepper-title">Bid</span>
+              <span class="stepper-header-right">
+                <span class="stepper-hint">${isDealer && forbiddenBid !== null ? `Hook: ${forbiddenBid}` : `Max: ${round.cards}`}</span>
+                ${entry.bid !== null ? `<button class="stepper-clear" title="Clear" onclick="clearValue(${pIdx}, 'bid')">✕</button>` : ''}
+              </span>
+            </div>
+            <div class="stepper-controls">
+              <button class="touch-btn" onclick="modifyValue(${pIdx}, 'bid', -1)">-</button>
+              <div class="stepper-value-display ${entry.bid === null ? 'is-unset' : ''} ${isDealerForbidden ? 'forbidden-alert' : ''}">
+                ${bidDisplay}
+              </div>
+              <button class="touch-btn" onclick="modifyValue(${pIdx}, 'bid', 1)">+</button>
+            </div>
+          </div>
+
+          <!-- Won Stepper -->
+          <div class="stepper-box">
+            <div class="stepper-header">
+              <span class="stepper-title">Won</span>
+              <span class="stepper-header-right">
+                <span class="stepper-hint">Max: ${round.cards}</span>
+                ${entry.actual !== null ? `<button class="stepper-clear" title="Clear" onclick="clearValue(${pIdx}, 'actual')">✕</button>` : ''}
+              </span>
+            </div>
+            <div class="stepper-controls">
+              <button class="touch-btn" onclick="modifyValue(${pIdx}, 'actual', -1)">-</button>
+              <div class="stepper-value-display ${entry.actual === null ? 'is-unset' : ''}">
+                ${actDisplay}
+              </div>
+              <button class="touch-btn" onclick="modifyValue(${pIdx}, 'actual', 1)">+</button>
+            </div>
+          </div>
+        `;
+
+        card.appendChild(steppers);
+        container.appendChild(card);
+      });
+
+      renderFeedbackBanner(round, forbiddenBid);
+    }
+
+    function renderFeedbackBanner(round, forbiddenBid) {
+      const banner = document.getElementById('roundFeedbackBanner');
+      const n = gameState.playerCount;
+
+      let totalBids = 0;
+      let bidsCount = 0;
+      let totalActuals = 0;
+      let actualsCount = 0;
+
+      for (let p = 0; p < n; p++) {
+        if (round.entries[p].bid !== null) {
+          totalBids += round.entries[p].bid;
+          bidsCount++;
+        }
+        if (round.entries[p].actual !== null) {
+          totalActuals += round.entries[p].actual;
+          actualsCount++;
+        }
+      }
+
+      const dealerBid = round.entries[round.dealerIndex].bid;
+      const dealerForbiddenHit = (forbiddenBid !== null && dealerBid !== null && dealerBid === forbiddenBid);
+
+      let bidStatusHtml = '';
+      if (dealerForbiddenHit) {
+        bidStatusHtml = `<span class="badge-status status-warn">⚠ Dealer bid the hooked number (${forbiddenBid})!</span>`;
+      } else if (bidsCount === n) {
+        const diff = totalBids - round.cards;
+        const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
+        bidStatusHtml = `<span class="badge-status status-ok">Bids closed: ${totalBids} tricks (${diffStr} net)</span>`;
+      } else if (forbiddenBid !== null) {
+        bidStatusHtml = `<span class="badge-status status-info">Dealer Hook: Cannot bid ${forbiddenBid}</span>`;
+      } else {
+        bidStatusHtml = `<span class="badge-status status-info">Bidding in progress (${bidsCount}/${n})</span>`;
+      }
+
+      let actStatusHtml = '';
+      if (actualsCount === n) {
+        if (totalActuals === round.cards) {
+          actStatusHtml = `<span class="badge-status status-ok">✔ Tricks balanced (${totalActuals}/${round.cards})</span>`;
+        } else {
+          const delta = totalActuals - round.cards;
+          actStatusHtml = `<span class="badge-status status-warn">⚠ Sum of tricks is ${totalActuals}, expected ${round.cards} (${delta > 0 ? '+' : ''}${delta})</span>`;
+        }
+      } else {
+        actStatusHtml = `<span style="font-size:0.7rem; color:var(--text-dim);">Entering tricks (${actualsCount}/${n})</span>`;
+      }
+
+      banner.innerHTML = `
+        <div class="feedback-row">
+          <span style="font-weight:700;">Bidding</span>
+          ${bidStatusHtml}
+        </div>
+        <div class="feedback-row" style="margin-top:0.25rem;">
+          <span style="font-weight:700;">Tricks Won</span>
+          ${actStatusHtml}
+        </div>
+      `;
+    }
+
+    function modifyValue(pIdx, field, delta) {
+      const rIdx = gameState.currentRoundIndex;
+      const round = gameState.rounds[rIdx];
+      const max = round.cards;
+      let val = round.entries[pIdx][field];
+
+      if (val === null) {
+        // First tap on an unset value: "-" confirms 0, "+" starts at 1.
+        val = delta > 0 ? 1 : 0;
+      } else {
+        val += delta;
+      }
+
+      if (val < 0) val = 0;
+      if (val > max) val = max;
+
+      round.entries[pIdx][field] = val;
+      saveGameState();
+      renderCurrentRoundView();
+    }
+
+    function clearValue(pIdx, field) {
+      const round = gameState.rounds[gameState.currentRoundIndex];
+      round.entries[pIdx][field] = null;
+      saveGameState();
+      renderCurrentRoundView();
+    }
+
+    function renderMiniLeaderboard(stats) {
+      const container = document.getElementById('miniLeaderboardChips');
+      container.innerHTML = '';
+
+      const list = gameState.players.map((name, idx) => ({
+        idx: idx,
+        name: name,
+        score: stats.totals[idx]
+      })).sort((a, b) => b.score - a.score);
+
+      const topScore = list[0].score;
+      const anyScored = stats.completedRounds.some(c => c > 0);
+
+      list.forEach((p) => {
+        // Crown every player tied for the lead, but only once at least one score exists.
+        const isLeading = anyScored && p.score === topScore;
+        const chip = document.createElement('div');
+        chip.className = `mini-leader-chip ${isLeading ? 'rank-first' : ''}`;
+
+        const scoreColor = p.score > 0 ? 'text-green' : (p.score < 0 ? 'text-red' : 'text-muted');
+        const prefix = p.score > 0 ? '+' : '';
+
+        chip.innerHTML = `
+          <div class="chip-name">${isLeading ? '👑 ' : ''}${escapeHtml(p.name)}</div>
+          <div class="chip-score ${scoreColor}">${prefix}${p.score}</div>
+        `;
+        container.appendChild(chip);
+      });
+    }
+
+    function renderMatrixTable() {
+      const thead = document.getElementById('matrixTableHead');
+      const tbody = document.getElementById('matrixTableBody');
+      const n = gameState.playerCount;
+      const stats = calculateGameStats();
+
+      let hHtml = `<tr><th>Rnd</th><th>Card</th>`;
+      gameState.players.forEach(name => {
+        hHtml += `<th>${escapeHtml(name)}</th>`;
+      });
+      hHtml += `</tr>`;
+      thead.innerHTML = hHtml;
+
+      tbody.innerHTML = '';
+      for (let r = 0; r < TOTAL_ROUNDS; r++) {
+        const round = gameState.rounds[r];
+        const isCurrent = (r === gameState.currentRoundIndex);
+        const tr = document.createElement('tr');
+        tr.className = `matrix-row ${isCurrent ? 'active-round-row' : ''}`;
+        tr.style.cursor = 'pointer';
+
+        let rowHtml = `<td><strong>#${round.roundNum}</strong></td><td>${round.cards}</td>`;
+
+        for (let p = 0; p < n; p++) {
+          const entry = round.entries[p];
+          if (entry.bid !== null && entry.actual !== null) {
+            const hit = (entry.bid === entry.actual);
+            const style = hit ? 'color:var(--accent-green);font-weight:800;' : 'color:var(--accent-red);';
+            rowHtml += `<td style="${style}">${entry.bid}/${entry.actual} <span style="font-size:0.65rem;color:var(--text-dim);">(${stats.perRoundCumulative[r][p]})</span></td>`;
+          } else if (entry.bid !== null) {
+            rowHtml += `<td>${entry.bid}/-</td>`;
+          } else {
+            rowHtml += `<td style="color:var(--text-dim);">-</td>`;
+          }
+        }
+
+        tr.innerHTML = rowHtml;
+        tr.addEventListener('click', () => {
+          gameState.currentRoundIndex = r;
+          saveGameState();
+          renderCurrentRoundView();
+          closeModal('matrixModal');
+        });
+        tbody.appendChild(tr);
+      }
+    }
+
+    function openModal(modalId) {
+      if (modalId === 'standingsModal') {
+        renderStandingsPodium();
+      }
+      const el = document.getElementById(modalId);
+      if (el) el.classList.add('active');
+    }
+
+    function closeModal(modalId) {
+      const el = document.getElementById(modalId);
+      if (el) el.classList.remove('active');
+    }
+
+    function renderStandingsPodium() {
+      const podiumContainer = document.getElementById('podiumList');
+      podiumContainer.innerHTML = '';
+      const stats = calculateGameStats();
+
+      const ranked = gameState.players.map((name, idx) => {
+        const played = stats.completedRounds[idx];
+        const hitRate = played > 0 ? Math.round((stats.hitCounts[idx] / played) * 100) : 0;
+        return {
+          idx: idx,
+          name: name,
+          score: stats.totals[idx],
+          hits: stats.hitCounts[idx],
+          played: played,
+          hitRate: hitRate
+        };
+      }).sort((a, b) => b.score - a.score);
+
+      assignTiedRanks(ranked);
+      const badges = { 1: '🥇 1st Place', 2: '🥈 2nd Place', 3: '🥉 3rd Place', 4: '4️⃣ 4th Place' };
+
+      ranked.forEach((p) => {
+        const card = document.createElement('div');
+        card.className = `podium-card ${p.rank === 1 ? 'rank-1' : ''}`;
+        const badgeText = (badges[p.rank] || `${p.rank}th`) + (p.tied ? ' (Tied)' : '');
+
+        card.innerHTML = `
+          <div>
+            <div style="font-size:0.78rem; font-weight:800; color:var(--accent-amber);">${badgeText}</div>
+            <div style="font-size:1.05rem; font-weight:900; color:#fff;">${escapeHtml(p.name)}</div>
+            <div style="font-size:0.72rem; color:var(--text-dim);">Hit Rate: ${p.hitRate}% (${p.hits}/${p.played} rounds)</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="${scoreColorClass(p.score)}" style="font-size:1.35rem; font-weight:900;">
+              ${p.score >= 0 ? '+' : ''}${p.score}
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-dim);">Points</div>
+          </div>
+        `;
+        podiumContainer.appendChild(card);
+      });
+    }
+
+    /**
+     * Add competition ranking (1,1,3,4) to a list already sorted by score descending.
+     * Args: sortedList - array of objects with a numeric `score`; mutated in place.
+     * Returns: the same array, each item gaining `rank` and `tied`.
+     */
+    function assignTiedRanks(sortedList) {
+      sortedList.forEach((p) => {
+        p.rank = 1 + sortedList.filter(q => q.score > p.score).length;
+        p.tied = sortedList.filter(q => q.score === p.score).length > 1;
+      });
+      return sortedList;
+    }
+
+    function scoreColorClass(val) {
+      if (val > 0) return 'text-green';
+      if (val < 0) return 'text-red';
+      return 'text-muted';
+    }
+
+    function copySummaryToClipboard() {
+      const stats = calculateGameStats();
+      const ranked = gameState.players.map((name, idx) => {
+        const played = stats.completedRounds[idx];
+        const hitRate = played > 0 ? Math.round((stats.hitCounts[idx] / played) * 100) : 0;
+        return {
+          name: name,
+          score: stats.totals[idx],
+          hits: stats.hitCounts[idx],
+          played: played,
+          hitRate: hitRate
+        };
+      }).sort((a, b) => b.score - a.score);
+
+      assignTiedRanks(ranked);
+
+      let text = `♠ German Bridge (Oh Hell) Summary Report ♠\n`;
+      text += `Scoring: Rule A (Square Penalty System)\n`;
+      text += `------------------------------------\n`;
+      ranked.forEach((p) => {
+        text += `${p.rank}${p.tied ? '=' : ''}. ${p.name}: ${p.score >= 0 ? '+' : ''}${p.score} pts (Hits: ${p.hits}/${p.played}, ${p.hitRate}%)\n`;
+      });
+      text += `------------------------------------`;
+
+      fallbackCopy(text, 'Summary copied to clipboard!');
+    }
+
+    function exportBackupJson() {
+      try {
+        // Blob URLs download reliably on iOS Safari, unlike very long data: URIs.
+        const blob = new Blob([JSON.stringify(gameState, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `german_bridge_match_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        showToast('Backup file downloaded');
+      } catch (err) {
+        console.warn('Download failed, falling back to clipboard:', err);
+        copyJsonStringToClipboard();
+      }
+    }
+
+    function copyJsonStringToClipboard() {
+      const jsonStr = JSON.stringify(gameState, null, 2);
+      fallbackCopy(jsonStr, 'JSON data copied to clipboard');
+    }
+
+    function handleFilePicker(e) {
+      const input = e.target;
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const parsed = JSON.parse(evt.target.result);
+          applyImportedData(parsed);
+        } catch (err) {
+          showToast('Invalid JSON file format');
+        }
+        input.value = ''; // allow picking the same file again
+      };
+      reader.onerror = function() {
+        showToast('Could not read file');
+        input.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    function handleManualTextImport() {
+      const text = document.getElementById('importJsonInput').value.trim();
+      if (!text) {
+        showToast('Please paste a JSON string first');
+        return;
+      }
+      try {
+        const parsed = JSON.parse(text);
+        applyImportedData(parsed);
+      } catch (err) {
+        showToast('Invalid JSON syntax');
+      }
+    }
+
+    function applyImportedData(data) {
+      const clean = sanitizeGameState(data);
+      if (!clean) {
+        showToast('Incompatible backup data structure');
+        return;
+      }
+      clean.isGameActive = true;
+      gameState = clean;
+      saveGameState();
+      renderSetupForm();
+      document.getElementById('importJsonInput').value = '';
+      closeModal('optionsModal');
+      showGameplayView();
+      showToast('Match restored successfully!');
+    }
+
+    function resetToNewGame() {
+      localStorage.removeItem(STORAGE_KEY);
+      gameState = {
+        isGameActive: false,
+        playerCount: 3,
+        players: ['Player C', 'Player I', 'Player E'],
+        firstDealerIndex: 0,
+        currentRoundIndex: 0,
+        rounds: []
+      };
+      generateDefaultRounds();
+      renderSetupForm();
+      showSetupView();
+      showToast('Match reset to new game');
+    }
+
+    function fallbackCopy(str, successMessage) {
+      const legacyCopy = () => {
+        const ta = document.createElement('textarea');
+        ta.value = str;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, str.length);
+        let ok = false;
+        try {
+          ok = document.execCommand('copy');
+        } catch (e) {
+          ok = false;
+        }
+        document.body.removeChild(ta);
+        showToast(ok ? successMessage : 'Copy failed, please copy manually');
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(str).then(() => showToast(successMessage)).catch(legacyCopy);
+      } else {
+        legacyCopy();
+      }
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const box = document.getElementById('toastBox');
+      box.textContent = msg;
+      box.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        box.classList.remove('show');
+      }, 2200);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
